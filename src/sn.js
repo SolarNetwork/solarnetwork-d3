@@ -1,6 +1,7 @@
 import "start";
 
 import "api/";
+import "chart/";
 import "color/";
 import "config/";
 import "core/";
