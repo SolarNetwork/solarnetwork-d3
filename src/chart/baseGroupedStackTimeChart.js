@@ -18,7 +18,7 @@ sn.chart.baseGroupedStackTimeChart = function(containerSelector, chartConfig) {
 		superReset = parent.reset,
 		superParseConfiguration = parent.parseConfiguration,
 		superYAxisTicks = parent.yAxisTicks;
-	var self = sn.util.copyAll(parent);
+	var self = sn_util_copyAll(parent);
 	self.me = self;
 
 	var discardId = '__discard__';

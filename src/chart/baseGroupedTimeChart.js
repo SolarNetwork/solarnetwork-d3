@@ -3,7 +3,7 @@ import "baseTimeChart";
 sn.chart.baseGroupedTimeChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseTimeChart(containerSelector, chartConfig),
 		superReset = parent.reset;
-	var self = sn.util.copyAll(parent);
+	var self = sn_util_copyAll(parent);
 	self.me = self;
 	
 	// raw data, by groupId
@@ -47,7 +47,7 @@ sn.chart.baseGroupedTimeChart = function(containerSelector, chartConfig) {
 			row = layerData[j].values;
 			for ( i = 0; i < row.length - 1; i += 1 ) {
 				if ( self.isNormalizedDuration(row[i].date, row[i+1].date) !== true ) {
-					datum = sn.util.copy(row[i]);
+					datum = sn_util_copy(row[i]);
 					datum.date = self.addNormalizedDuration(datum.date);
 					datum[plotPropName] = null;
 					datum[plotReversePropName] = null;

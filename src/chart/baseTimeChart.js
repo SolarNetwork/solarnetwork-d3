@@ -1,4 +1,6 @@
 import "chart";
+import "../config/Configuration"
+import "../util/util"
 
 sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	var self = {
