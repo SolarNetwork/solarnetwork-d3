@@ -6,6 +6,7 @@ import "baseTimeChart";
 import "chart";
 import "energyBarOverlapChart";
 import "energyIOBarChart";
+import "energyIOPieChart";
 import "gauge";
 import "powerAreaChart";
 import "powerAreaOverlapChart";
