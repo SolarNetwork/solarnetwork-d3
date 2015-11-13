@@ -1,6 +1,6 @@
 import "net";
 
-sn.net.sec = function() {
+sn.net.securityHelper = function() {
 	'use strict';
 	var that = { version : '1.1.0' };
 
@@ -300,3 +300,7 @@ sn.net.sec = function() {
 
 	return that;
 };
+
+// provide a global singleton helper on sn.net.sec
+sn.net.sec = sn.net.securityHelper();
+
