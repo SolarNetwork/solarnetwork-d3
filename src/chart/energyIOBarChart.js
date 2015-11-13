@@ -238,6 +238,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		centerYLoc = parent.y(0);
 		
 		function dataTypeGroupTransformFn(d, i) {
+			!d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
 			var yShift = 0;
 			if ( negativeGroupMap[groupIds[i]] === true ) {
 				yShift = -(centerYLoc * 2);
@@ -250,6 +251,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		// we create groups for each data type, but don't destroy them, so we preserve DOM order
 		// and maintain opacity levels for all stack layers within each data type
 		groups = svgData.selectAll('g.dataType').data(drawData.groupedData, function(d, i) {
+					!d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
 					return groupIds[i];
 				});
 		groups.transition().duration(transitionMs)
@@ -320,7 +322,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		var transitionMs = parent.transitionMs(),
 			xDomain = parent.x.domain(),
 			xBar = parent.xBar,
-			d, 
 			len = timeAggregateData.length,
 			bandTicks;
 			
