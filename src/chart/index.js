@@ -7,3 +7,5 @@ import "chart";
 import "energyBarOverlapChart";
 import "energyIOBarChart";
 import "gauge";
+import "powerAreaChart";
+import "powerAreaOverlapChart";
