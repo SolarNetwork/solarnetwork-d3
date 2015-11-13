@@ -5,4 +5,5 @@ import "baseGroupedTimeChart";
 import "baseTimeChart";
 import "chart";
 import "energyBarOverlapChart";
+import "energyIOBarChart";
 import "gauge";
