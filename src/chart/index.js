@@ -9,3 +9,4 @@ import "energyIOBarChart";
 import "gauge";
 import "powerAreaChart";
 import "powerAreaOverlapChart";
+import "powerIOAreaChart";
