@@ -8,8 +8,8 @@ sn.env = {
 	tls : (function() {
 		return (global !== undefined 
 			&& global.locaion !== undefined
-			&& window.location.protocol !== undefined 
-			&& window.location.protocol.toLowerCase().indexOf('https') === 0 ? true : false);
+			&& global.location.protocol !== undefined 
+			&& global.location.protocol.toLowerCase().indexOf('https') === 0 ? true : false);
 	}()),
 	path : '/solarquery',
 	solarUserPath : '/solaruser',

@@ -8,11 +8,11 @@ sn.hasTouchSupport = (function() {
 	if ( !(global && global.document) ) {
 		return false;
 	}
-	if ( 'createTouch' in window.document ) { // True on the iPhone
+	if ( 'createTouch' in global.document ) { // True on the iPhone
 		return true;
 	}
 	try {
-		var event = window.document.createEvent('TouchEvent');
+		var event = global.document.createEvent('TouchEvent');
 		return !!event.initTouchEvent;
 	} catch( error ) {
 		return false;
