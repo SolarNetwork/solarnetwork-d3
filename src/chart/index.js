@@ -11,3 +11,5 @@ import "gauge";
 import "powerAreaChart";
 import "powerAreaOverlapChart";
 import "powerIOAreaChart";
+import "seasonalDayOfWeekLineChart";
+import "seasonalHourOfDayLineChart";
