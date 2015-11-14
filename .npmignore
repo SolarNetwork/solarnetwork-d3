@@ -1,0 +1,5 @@
+*.bbprojectd
+.DS_Store
+examples/
+lib/
+test/
