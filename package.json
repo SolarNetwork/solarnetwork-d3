@@ -2,7 +2,30 @@
   "name": "solarnetwork-d3",
   "version": "0.9.0",
   "description": "SolarNetwork JavaScript API.",
+  "keywords": [
+    "solarnetwork",
+    "solarnode"
+  ],
+  "author": "Matt Magoffin <nodejs.com@msqr.us>",
+  "repository": {
+  	"type": "git",
+  	"url": "https://github.com/SolarNetwork/solarnetwork-d3.git"
+  },
   "main": "solarnetwork-d3.js",
+  "browserify": "solarnetwork-d3.js",
+  "homepage": "http://solarnetwork.github.io/",
+  "bugs" : "https://data.solarnetwork.net/jira/",
+  "license": "Apache-2.0",
+  "dependencies" : {
+    "colorbrewer" : "^0.x",
+  	"crypto-js" : "^3.x",
+  	"d3" : "^3.x",
+  	"queue-async" : "^1.x"
+  },
+  "devDependencies": {
+    "smash": "^0.0.15",
+    "uglify-js": "^2.x"
+  },
   "scripts": {
     "build": "npm run build:min",
     
@@ -15,23 +38,5 @@
     "verify:imports" : "bin/verify-imports.sh",
     
     "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [
-    "solarnetwork",
-    "solarnode"
-  ],
-  "author": "Matt Magoffin",
-  "repository": "https://github.com/SolarNetwork/solarnetwork-d3.git",
-  "bugs" : "https://data.solarnetwork.net/jira/",
-  "license": "Apache-2.0",
-  "dependencies" : {
-    "colorbrewer" : "^0.x",
-  	"crypto-js" : "^3.x",
-  	"d3" : "^3.x",
-  	"queue-async" : "^1.x"
-  },
-  "devDependencies": {
-    "smash": "^0.0.15",
-    "uglify-js": "^2.6.0"
   }
 }
