@@ -122,7 +122,7 @@ sn.chart.baseGroupedStackTimeChart = function(containerSelector, chartConfig) {
 							self.dataCallback().call(self.me, groupId, d);
 						} else if ( d.date === undefined ) {
 							// automatically create Date
-							d.date = sn.datum.datumDate(d);
+							d.date = sn.api.datum.datumDate(d);
 						}
 					}
 					

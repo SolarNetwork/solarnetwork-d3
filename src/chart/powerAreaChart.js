@@ -89,7 +89,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 						self.dataCallback().call(parent.me, groupId, d);
 					} else if ( d.date === undefined ) {
 						// automatically create Date
-						d.date = sn.datum.datumDate(d);
+						d.date = sn.api.datum.datumDate(d);
 					}
 				}
 				// remove excluded sources...

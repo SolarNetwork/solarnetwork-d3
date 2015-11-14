@@ -76,10 +76,10 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 	function availableSourcesURL(startDate, endDate) {
 		var url = (baseURL() +'/range/sources?nodeId=' +nodeId);
 		if ( startDate !== undefined ) {
-			url += '&start=' +encodeURIComponent(sn.dateFormat(startDate));
+			url += '&start=' +encodeURIComponent(sn.format.dateFormat(startDate));
 		}
 		if ( endDate !== undefined ) {
-			url += '&end=' +encodeURIComponent(sn.dateFormat(endDate));
+			url += '&end=' +encodeURIComponent(sn.format.dateFormat(endDate));
 		}
 		return url;
 	}
@@ -98,10 +98,10 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 	function dateTimeListURL(startDate, endDate, agg, sourceIds, pagination) {
 		var url = (baseURL() +'/datum/list?nodeId=' +nodeId);
 		if ( startDate ) {
-			url += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
+			url += '&startDate=' +encodeURIComponent(sn.format.dateTimeFormatURL(startDate));
 		}
 		if ( endDate ) {
-			url += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(endDate));
+			url += '&endDate=' +encodeURIComponent(sn.format.dateTimeFormatURL(endDate));
 		}
 		if ( agg ) {
 			url += '&aggregate=' + encodeURIComponent(agg);

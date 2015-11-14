@@ -150,7 +150,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 							parent.dataCallback().call(parent.me, groupId, d);
 						} else if ( d.date === undefined ) {
 							// automatically create Date
-							d.date = sn.datum.datumDate(d);
+							d.date = sn.api.datum.datumDate(d);
 						}
 						d.season = sn.seasonForDate(d.date);
 						d.timeKey = timeKeyForDate(d.date);

@@ -482,7 +482,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 						dataValue = dataArray[i][parent.plotPropertyName] * scale;
 						if ( callbackData.dateUTC === undefined && dataArray[i].created ) {
 							callbackData.dateUTC = dataArray[i].created;
-							callbackData.utcDate = sn.timestampFormat.parse(callbackData.dateUTC);
+							callbackData.utcDate = sn.format.timestampFormat.parse(callbackData.dateUTC);
 						}
 					} else {
 						dataValue = null; // null to flag as missing
@@ -525,7 +525,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 							return false;
 						});
 						if ( i >= 0 ) {
-							dateUTC = sn.timestampFormat.parse(d.created);
+							dateUTC = sn.format.timestampFormat.parse(d.created);
 							if ( agg === 'Day' ) {
 								time = d3.time.day;
 							} else if ( agg === 'Hour' ) {

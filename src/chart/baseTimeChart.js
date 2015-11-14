@@ -1,4 +1,5 @@
 import "chart";
+import "../api/datum/date";
 import "../config/Configuration";
 import "../ui/pixelWidth";
 import "../util/util";

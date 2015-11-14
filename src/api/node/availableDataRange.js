@@ -81,7 +81,7 @@ function sn_api_node_availableDataRange(sourceSets, callback) {
 		var intervalObj = extractReportableInterval(results);
 		if ( intervalObj.startDateMillis !== undefined ) {
 			intervalObj.sDate = new Date(intervalObj.startDateMillis);
-			//intervalObj.sLocalDate = sn.dateTimeFormatLocal.parse(intervalObj.startDate);
+			//intervalObj.sLocalDate = sn.format.dateTimeFormatLocal.parse(intervalObj.startDate);
 		}
 		if ( intervalObj.endDateMillis !== undefined ) {
 			intervalObj.eDate = new Date(intervalObj.endDateMillis);

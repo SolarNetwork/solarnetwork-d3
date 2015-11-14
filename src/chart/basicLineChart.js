@@ -160,7 +160,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 					// set up date for X axis
 					if ( d.date === undefined ) {
 						// automatically create Date
-						d.date = sn.datum.datumDate(d);
+						d.date = sn.api.datum.datumDate(d);
 					}
 
 					if ( !sourceExcludeCallback || !sourceExcludeCallback.call(this, lineId) ) {
