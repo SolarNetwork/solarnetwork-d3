@@ -22,7 +22,7 @@ function sn_format_fmt() {
 		replaceValue = arguments[i];
 		if ( replaceValue instanceof Date ) {
 			replaceValue = (replaceValue.getUTCHours() === 0 && replaceValue.getMinutes() === 0 
-				? sn.dateFormat(replaceValue) : sn.dateTimeFormat(replaceValue));
+				? sn.format.dateFormat(replaceValue) : sn.format.dateTimeFormatURL(replaceValue));
 		}
 		formatted = formatted.replace(regexp, replaceValue);
 	}
