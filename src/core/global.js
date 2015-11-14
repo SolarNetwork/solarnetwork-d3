@@ -1,6 +1,4 @@
-var global = sn_util_getGlobalObject();
-
-function sn_util_getGlobalObject() {
+var global = (function() {
     // Workers don’t have `window`, only `self`
     if (typeof self !== 'undefined') {
         return self;
@@ -11,4 +9,4 @@ function sn_util_getGlobalObject() {
     // Not all environments allow eval and Function
     // Use only as a last resort:
     return new Function('return this')();
-}
+}());
