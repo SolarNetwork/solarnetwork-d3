@@ -1,6 +1,7 @@
 import "chart";
-import "../config/Configuration"
-import "../util/util"
+import "../config/Configuration";
+import "../ui/pixelWidth";
+import "../util/util";
 
 sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	var self = {
@@ -16,7 +17,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	var config = (chartConfig || new sn.Configuration());
 	
 	// default to container's width, if we can
-	var containerWidth = sn.pixelWidth(containerSelector);
+	var containerWidth = sn.ui.pixelWidth(containerSelector);
 	
 	var p = (config.padding || [10, 0, 20, 30]),
 		w = (config.width || containerWidth || 812) - p[1] - p[3],

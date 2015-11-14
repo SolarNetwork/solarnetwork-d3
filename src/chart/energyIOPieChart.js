@@ -1,5 +1,6 @@
 import "chart";
 import "../config/Configuration"
+import "../ui/pixelWidth";
 
 /**
  * @typedef sn.chart.energyIOPieChartParameters
@@ -40,7 +41,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var config = (chartConfig || new sn.Configuration());
 	
 	// default to container's width, if we can
-	var containerWidth = sn.pixelWidth(containerSelector);
+	var containerWidth = sn.ui.pixelWidth(containerSelector);
 	
 	var p = (config.padding || [24, 24, 24, 24]),
 		w = (config.width || containerWidth || 300) - p[1] - p[3],
