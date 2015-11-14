@@ -2,6 +2,7 @@
 		define(this.sn = sn);
 	} else if ( typeof module === "object" && module.exports ) {
 		module.exports = sn;
+	} else {
+		global.sn = sn;
 	}
-	else this.sn = sn;
 }();
