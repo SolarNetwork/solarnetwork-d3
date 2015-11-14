@@ -3,6 +3,7 @@ import "baseGroupedStackTimeBarChart";
 import "baseGroupedStackTimeChart";
 import "baseGroupedTimeChart";
 import "baseTimeChart";
+import "basicLineChart";
 import "chart";
 import "energyBarOverlapChart";
 import "energyIOBarChart";
