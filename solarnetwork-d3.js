@@ -8,8 +8,7 @@
   sn.api.control = {};
   sn.api.user = {};
   sn.api.node = {};
-  var global = sn_util_getGlobalObject();
-  function sn_util_getGlobalObject() {
+  var global = function() {
     if (typeof self !== "undefined") {
       return self;
     }
@@ -17,7 +16,7 @@
       return global;
     }
     return new Function("return this")();
-  }
+  }();
   sn.net = {};
   sn.net.parseURLQueryTerms = sn_net_parseURLQueryTerms;
   /**
@@ -59,6 +58,50 @@
     }
     return params;
   }
+  var sn_env = {
+    debug: false,
+    host: "data.solarnetwork.net",
+    tls: function() {
+      return global !== undefined && global.locaion !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
+    }(),
+    path: "/solarquery",
+    solarUserPath: "/solaruser",
+    secureQuery: false
+  };
+  function sn_env_setDefaultEnv(defaults) {
+    var prop;
+    for (prop in defaults) {
+      if (defaults.hasOwnProperty(prop)) {
+        if (sn_env[prop] === undefined) {
+          sn_env[prop] = defaults[prop];
+        }
+      }
+    }
+  }
+  function sn_env_setEnv(environment) {
+    var prop;
+    for (prop in environment) {
+      if (environment.hasOwnProperty(prop)) {
+        sn_env[prop] = environment[prop];
+      }
+    }
+  }
+  sn.env = sn_env;
+  sn.setEnv = sn_env_setEnv;
+  sn.setDefaultEnv = sn_env_setDefaultEnv;
+  if (global !== undefined && global.location !== undefined && global.location.search !== undefined) {
+    sn_env_setEnv(sn_net_parseURLQueryTerms(global.location.search));
+  }
+  sn.config = {
+    debug: false,
+    host: "data.solarnetwork.net",
+    tls: function() {
+      return global !== undefined && global.locaion !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
+    }(),
+    path: "/solarquery",
+    solarUserPath: "/solaruser",
+    secureQuery: false
+  };
   sn.util = {
     arraysAreEqual: sn_util_arraysAreEqual,
     copy: sn_util_copy,
@@ -159,48 +202,6 @@
       return method.apply(that, arguments);
     };
   }
-  sn.env = {
-    debug: false,
-    host: "data.solarnetwork.net",
-    tls: function() {
-      return global !== undefined && global.locaion !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
-    }(),
-    path: "/solarquery",
-    solarUserPath: "/solaruser",
-    secureQuery: false
-  };
-  sn.setDefaultEnv = sn_env_setDefaultEnv;
-  function sn_env_setDefaultEnv(defaults) {
-    var prop;
-    for (prop in defaults) {
-      if (defaults.hasOwnProperty(prop)) {
-        if (env[prop] === undefined) {
-          env[prop] = defaults[prop];
-        }
-      }
-    }
-  }
-  function sn_env_setEnv(environment) {
-    var prop;
-    for (prop in environment) {
-      if (environment.hasOwnProperty(prop)) {
-        env[prop] = environment[prop];
-      }
-    }
-  }
-  if (global !== undefined && global.location !== undefined && global.location.search !== undefined) {
-    sn_env_setEnv(sn_net_parseURLQueryTerms(global.location.search));
-  }
-  sn.config = {
-    debug: false,
-    host: "data.solarnetwork.net",
-    tls: function() {
-      return global !== undefined && global.locaion !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
-    }(),
-    path: "/solarquery",
-    solarUserPath: "/solaruser",
-    secureQuery: false
-  };
   sn.api.node.registerUrlHelperFunction = sn_api_node_registerUrlHelperFunction;
   var sn_api_node_urlHelperFunctions;
   sn.api.node.nodeUrlHelper = function(node, configuration) {
@@ -232,20 +233,20 @@
     function availableSourcesURL(startDate, endDate) {
       var url = baseURL() + "/range/sources?nodeId=" + nodeId;
       if (startDate !== undefined) {
-        url += "&start=" + encodeURIComponent(sn.dateFormat(startDate));
+        url += "&start=" + encodeURIComponent(sn.format.dateFormat(startDate));
       }
       if (endDate !== undefined) {
-        url += "&end=" + encodeURIComponent(sn.dateFormat(endDate));
+        url += "&end=" + encodeURIComponent(sn.format.dateFormat(endDate));
       }
       return url;
     }
     function dateTimeListURL(startDate, endDate, agg, sourceIds, pagination) {
       var url = baseURL() + "/datum/list?nodeId=" + nodeId;
       if (startDate) {
-        url += "&startDate=" + encodeURIComponent(sn.dateTimeFormatURL(startDate));
+        url += "&startDate=" + encodeURIComponent(sn.format.dateTimeFormatURL(startDate));
       }
       if (endDate) {
-        url += "&endDate=" + encodeURIComponent(sn.dateTimeFormatURL(endDate));
+        url += "&endDate=" + encodeURIComponent(sn.format.dateTimeFormatURL(endDate));
       }
       if (agg) {
         url += "&aggregate=" + encodeURIComponent(agg);
@@ -1368,10 +1369,10 @@
     function availableSourcesURL(startDate, endDate) {
       var url = baseURL() + "/location/datum/sources?locationId=" + locationId;
       if (startDate !== undefined) {
-        url += "&start=" + encodeURIComponent(sn.dateFormat(startDate));
+        url += "&start=" + encodeURIComponent(sn.format.dateFormat(startDate));
       }
       if (endDate !== undefined) {
-        url += "&end=" + encodeURIComponent(sn.dateFormat(endDate));
+        url += "&end=" + encodeURIComponent(sn.format.dateFormat(endDate));
       }
       return url;
     }
@@ -1390,10 +1391,10 @@
     function dateTimeListURL(startDate, endDate, agg, sourceIds, pagination) {
       var url = baseURL() + "/location/datum/list?locationId=" + locationId;
       if (startDate) {
-        url += "&startDate=" + encodeURIComponent(sn.dateTimeFormatURL(startDate));
+        url += "&startDate=" + encodeURIComponent(sn.format.dateTimeFormatURL(startDate));
       }
       if (endDate) {
-        url += "&endDate=" + encodeURIComponent(sn.dateTimeFormatURL(endDate));
+        url += "&endDate=" + encodeURIComponent(sn.format.dateTimeFormatURL(endDate));
       }
       if (agg) {
         url += "&aggregate=" + encodeURIComponent(agg);
@@ -1639,6 +1640,26 @@
       return this;
     }
   };
+  sn.ui = {};
+  sn.ui.pixelWidth = sn_ui_pixelWidth;
+  function sn_ui_pixelWidth(selector) {
+    if (selector === undefined) {
+      return undefined;
+    }
+    var styleWidth = d3.select(selector).style("width");
+    if (!styleWidth) {
+      return null;
+    }
+    var pixels = styleWidth.match(/([0-9.]+)px/);
+    if (pixels === null) {
+      return null;
+    }
+    var result = Math.floor(pixels[1]);
+    if (isNaN(result)) {
+      return null;
+    }
+    return result;
+  }
   sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
     var self = {
       version: "1.0.0"
@@ -1647,7 +1668,7 @@
     var internalPropName = "__internal__";
     var aggregates = [ "FiveMinute", "TenMinute", "FifteenMinute", "Hour", "HourOfDay", "SeasonalHourOfDay", "Day", "DayOfWeek", "SeasonalDayOfWeek", "Month" ];
     var config = chartConfig || new sn.Configuration();
-    var containerWidth = sn.pixelWidth(containerSelector);
+    var containerWidth = sn.ui.pixelWidth(containerSelector);
     var p = config.padding || [ 10, 0, 20, 30 ], w = (config.width || containerWidth || 812) - p[1] - p[3], h = (config.height || 300) - p[0] - p[2], x = d3.time.scale.utc().range([ 0, w ]), y = d3.scale.linear().range([ h, 0 ]);
     var aggregateType;
     var plotProperties;
@@ -2835,7 +2856,7 @@
             if (parent.dataCallback()) {
               parent.dataCallback().call(parent.me, groupId, d);
             } else if (d.date === undefined) {
-              d.date = sn.datum.datumDate(d);
+              d.date = sn.api.datum.datumDate(d);
             }
             d.season = sn.seasonForDate(d.date);
             d.timeKey = timeKeyForDate(d.date);
@@ -3075,7 +3096,7 @@
             if (self.dataCallback()) {
               self.dataCallback().call(self.me, groupId, d);
             } else if (d.date === undefined) {
-              d.date = sn.datum.datumDate(d);
+              d.date = sn.api.datum.datumDate(d);
             }
           }
           if (self.sourceExcludeCallback()) {
@@ -3642,7 +3663,7 @@
           rawLineData.forEach(function(d) {
             var y;
             if (d.date === undefined) {
-              d.date = sn.datum.datumDate(d);
+              d.date = sn.api.datum.datumDate(d);
             }
             if (!sourceExcludeCallback || !sourceExcludeCallback.call(this, lineId)) {
               if (rangeX[0] === null || d.date < rangeX[0]) {
@@ -4092,7 +4113,7 @@
               dataValue = dataArray[i][parent.plotPropertyName] * scale;
               if (callbackData.dateUTC === undefined && dataArray[i].created) {
                 callbackData.dateUTC = dataArray[i].created;
-                callbackData.utcDate = sn.timestampFormat.parse(callbackData.dateUTC);
+                callbackData.utcDate = sn.format.timestampFormat.parse(callbackData.dateUTC);
               }
             } else {
               dataValue = null;
@@ -4131,7 +4152,7 @@
                 return false;
               });
               if (i >= 0) {
-                dateUTC = sn.timestampFormat.parse(d.created);
+                dateUTC = sn.format.timestampFormat.parse(d.created);
                 if (agg === "Day") {
                   time = d3.time.day;
                 } else if (agg === "Hour") {
@@ -4353,7 +4374,7 @@
     var me = self;
     var sources = [];
     var config = chartConfig || new sn.Configuration();
-    var containerWidth = sn.pixelWidth(containerSelector);
+    var containerWidth = sn.ui.pixelWidth(containerSelector);
     var p = config.padding || [ 24, 24, 24, 24 ], w = (config.width || containerWidth || 300) - p[1] - p[3], h = (config.height || 300) - p[0] - p[2], r = d3.min([ w, h ]) / 2;
     var transitionMs = undefined;
     var plotProperty = "wattHours";
@@ -4949,7 +4970,7 @@
             if (self.dataCallback()) {
               self.dataCallback().call(parent.me, groupId, d);
             } else if (d.date === undefined) {
-              d.date = sn.datum.datumDate(d);
+              d.date = sn.api.datum.datumDate(d);
             }
           }
           if (self.sourceExcludeCallback() && self.sourceExcludeCallback().call(parent.me, groupId, d.sourceId)) {
@@ -5500,6 +5521,86 @@
       return false;
     }
   }();
+  /**
+ * Names to use for user-interaction events.
+ * 
+ * <p>On non-touch devices these equate to <em>mousedown</em>, 
+ * <em>mouseup</em>, etc. On touch-enabled devices these equate to
+ * <em>touchstart</em>, <em>touchend</em>, etc.</p>
+ *
+ * @retunrs {Object} Mapping of start, move, end, cancel keys to associated event names.
+ * @preserve
+ */
+  sn.tapEventNames = function() {
+    return sn.hasTouchSupport ? {
+      start: "touchstart",
+      move: "touchmove",
+      end: "touchend",
+      cancel: "touchcancel",
+      click: "touchstart",
+      dblclick: "touchstart"
+    } : {
+      start: "mousedown",
+      move: "mousemove",
+      end: "mouseup",
+      cancel: "touchcancel",
+      click: "click",
+      dblclick: "dblclick"
+    };
+  }();
+  /**
+ * Get the first user-interaction x,y coordinates relative to a given container element.
+ *
+ * @param {Node} container - A DOM container node to get the relative coordinates for.
+ * @returns {Array} An array like <code>[x, y]</code> or <code>undefined</code> if not known.
+ * @preserve
+ */
+  sn.tapCoordinates = function(container) {
+    var coordinates;
+    if (sn.hasTouchSupport) {
+      coordinates = d3.touches(container);
+      return coordinates && coordinates.length > 0 ? coordinates[0] : undefined;
+    }
+    return d3.mouse(container);
+  };
+  sn.format.displayScaleForValue = sn_format_displayScaleForValue;
+  sn.format.displayUnitsForScale = sn_format_displayUnitsForScale;
+  /**
+ * Get an appropriate display scale for a given value. This will return values suitable
+ * for passing to {@link sn.format.displayUnitsForScale}.
+ * 
+ * @param {Number} value - The value, for example the maximum value in a range of values, 
+ *                         to get a display scale factor for.
+ * @return {Number} A display scale factor.
+ * @since 0.0.7
+ * @preserve
+ */
+  function sn_format_displayScaleForValue(value) {
+    var result = 1, num = Number(value);
+    if (isNaN(num) === false) {
+      if (value >= 1e9) {
+        result = 1e9;
+      } else if (value >= 1e6) {
+        result = 1e6;
+      } else if (value >= 1e3) {
+        result = 1e3;
+      }
+    }
+    return result;
+  }
+  /**
+ * Get an appropriate display unit for a given base unit and scale factor.
+ *
+ * @param {String} baseUnit - The base unit, for example <b>W</b> or <b>Wh</b>.
+ * @param {Number} scale - The unit scale, which must be a recognized SI scale, such 
+ *                         as <b>1000</b> for <b>k</b>.
+ * @return {String} A display unit value.
+ * @since 0.0.7
+ * @preserve
+ */
+  function sn_format_displayUnitsForScale(baseUnit, scale) {
+    return (scale === 1e9 ? "G" : scale === 1e6 ? "M" : scale === 1e3 ? "k" : "") + baseUnit;
+  }
   sn.format.fmt = sn_format_fmt;
   /**
  * Helper to be able to use placeholders even on iOS, where console.log doesn't support them.
@@ -5517,7 +5618,7 @@
       regexp = new RegExp("\\{" + (i - 1) + "\\}", "gi");
       replaceValue = arguments[i];
       if (replaceValue instanceof Date) {
-        replaceValue = replaceValue.getUTCHours() === 0 && replaceValue.getMinutes() === 0 ? sn.dateFormat(replaceValue) : sn.dateTimeFormat(replaceValue);
+        replaceValue = replaceValue.getUTCHours() === 0 && replaceValue.getMinutes() === 0 ? sn.format.dateFormat(replaceValue) : sn.format.dateTimeFormatURL(replaceValue);
       }
       formatted = formatted.replace(regexp, replaceValue);
     }
@@ -5853,7 +5954,54 @@
     return that;
   };
   sn.net.sec = sn.net.securityHelper();
-  sn.ui = {};
+  /**
+ * Set the display units within a d3 selection based on a scale. This method takes a 
+ * base unit and adds an SI prefix based on the provided scale. It replaces the text
+ * content of any DOM node with a <code>unit</code> class that is a child of the given
+ * selection.
+ * 
+ * @param {object} selection - A d3 selection that serves as the root search context.
+ * @param {string} baseUnit - The base unit, for example <b>W</b> or <b>Wh</b>.
+ * @param {number} scale - The unit scale, which must be a recognized SI scale, such 
+ *                         as <b>1000</b> for <b>k</b>.
+ * @param {string} unitKind - Optional text to replace all occurrences of <code>.unit-kind</code>
+ *                            elements with.
+ * @since 0.0.4
+ * @preserve
+ */
+  sn.ui.adjustDisplayUnits = function(selection, baseUnit, scale, unitKind) {
+    var unit = sn.format.displayUnitsForScale(baseUnit, scale);
+    selection.selectAll(".unit").text(unit);
+    if (unitKind !== undefined) {
+      selection.selectAll(".unit-kind").text(unitKind);
+    }
+  };
+  sn.ui.colorDataLegendTable = sn_ui_colorDataLegendTable;
+  function sn_ui_colorDataLegendTable(containerSelector, colorData, clickHandler, labelRenderer) {
+    var table = d3.select(containerSelector).selectAll("table").data([ 0 ]);
+    table.enter().append("table").append("tbody");
+    var labelTableRows = table.select("tbody").selectAll("tr").data(colorData);
+    var newLabelTableRows = labelTableRows.enter().append("tr");
+    labelTableRows.exit().remove();
+    if (clickHandler) {
+      newLabelTableRows.on("click", clickHandler).classed("clickable", true);
+    }
+    if (labelRenderer === undefined) {
+      labelRenderer = function(s) {
+        s.text(Object);
+      };
+    }
+    var swatches = labelTableRows.selectAll("td.swatch").data(function(d) {
+      return [ d.color ];
+    }).style("background-color", Object);
+    swatches.enter().append("td").attr("class", "swatch").style("background-color", Object);
+    swatches.exit().remove();
+    var descriptions = labelTableRows.selectAll("td.desc").data(function(d) {
+      return [ d.source === "" ? "Main" : d.source ];
+    }).call(labelRenderer);
+    descriptions.enter().append("td").attr("class", "desc").call(labelRenderer);
+    descriptions.exit().remove();
+  }
   /**
  * Render a number in the style of an odometer.
  *
@@ -6167,5 +6315,7 @@
     define(this.sn = sn);
   } else if (typeof module === "object" && module.exports) {
     module.exports = sn;
-  } else this.sn = sn;
+  } else {
+    global.sn = sn;
+  }
 }();
