@@ -29,7 +29,7 @@ sn.api.user.userUrlHelper = function(configuration) {
 		version : '1.0.0'
 	};
 	
-	var config = sn_util_copy(configuration, {
+	var config = sn.util.copy(configuration, {
 		host : 'data.solarnetwork.net',
 		tls : true,
 		path : '/solaruser',

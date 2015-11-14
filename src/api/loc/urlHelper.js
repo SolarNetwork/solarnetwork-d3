@@ -23,7 +23,7 @@ sn.api.loc.locationUrlHelper = function(location, configuration) {
 	
 	var locationId = location;
 	
-	var config = sn_util_copy(configuration, {
+	var config = sn.util.copy(configuration, {
 		host : 'data.solarnetwork.net',
 		tls : true,
 		path : '/solarquery',

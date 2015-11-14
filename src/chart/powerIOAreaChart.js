@@ -25,7 +25,7 @@ import "baseGroupedStackTimeChart";
  */
 sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseGroupedStackTimeChart(containerSelector, chartConfig),
-		superDraw = sn.superMethod.call(parent, 'draw');
+		superDraw = sn.util.superMethod.call(parent, 'draw');
 	var self = (function() {
 		var	me = sn.util.copy(parent);
 		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});

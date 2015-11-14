@@ -22,7 +22,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 	
 	var nodeId = node;
 	
-	var config = sn_util_copy(configuration, {
+	var config = sn.util.copy(configuration, {
 		host : 'data.solarnetwork.net',
 		tls : true,
 		path : '/solarquery',

@@ -12,7 +12,7 @@ import "baseGroupedTimeChart";
  */
 sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseGroupedTimeChart(containerSelector, chartConfig),
-		superDraw = sn.superMethod.call(parent, 'draw');
+		superDraw = sn.util.superMethod.call(parent, 'draw');
 	var self = sn.util.copyAll(parent, {version : '1.0.0'});
 	self.me = self;
 	

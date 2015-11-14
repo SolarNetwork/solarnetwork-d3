@@ -23,7 +23,7 @@ import "baseGroupedStackTimeChart";
  */
 sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseGroupedStackTimeChart(containerSelector, chartConfig),
-		superDraw = sn.superMethod.call(parent, 'draw');
+		superDraw = sn.util.superMethod.call(parent, 'draw');
 	var that = (function() {
 		var	me = sn.util.copy(parent);
 		return me;

@@ -24,9 +24,9 @@ import "baseTimeChart";
  */
 sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseTimeChart(containerSelector, chartConfig),
-		superDraw = sn_util_superMethod.call(parent, 'draw');
+		superDraw = sn.util.superMethod.call(parent, 'draw');
 	var self = (function() {
-		var	me = sn_util_copy(parent);
+		var	me = sn.util.copy(parent);
 		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
 		return me;
 	}());
