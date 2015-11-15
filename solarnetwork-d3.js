@@ -379,7 +379,7 @@
 	 * Get a URL for just the SolarNet host, without any path.
 	 *
 	 * @returns {String} the URL to the SolarNet host
-	 * @memberOf sn.datum.nodeUrlHelper
+	 * @memberOf sn.api.user.userUrlHelper
 	 * @preserve
 	 */
     function hostURL() {
@@ -4498,6 +4498,30 @@
     parent.handleDoubleClick = handleDoubleClick;
     return self;
   };
+  sn.math = {
+    deg2rad: sn_math_deg2rad,
+    rad2deg: sn_math_rad2deg
+  };
+  /**
+ * Convert degrees to radians.
+ * 
+ * @param {number} deg - the degrees value to convert to radians
+ * @returns {number} the radians
+ * @preserve
+ */
+  function sn_math_deg2rad(deg) {
+    return deg * Math.PI / 180;
+  }
+  /**
+ * Convert radians to degrees.
+ * 
+ * @param {number} rad - the radians value to convert to degrees
+ * @returns {number} the degrees
+ * @preserve
+ */
+  function sn_math_rad2deg(rad) {
+    return rad * 180 / Math.PI;
+  }
   /**
  * @typedef sn.chart.energyIOPieChartParameters
  * @type {sn.Configuration}
@@ -4965,30 +4989,6 @@
     };
     return self;
   };
-  sn.math = {
-    deg2rad: sn_math_deg2rad,
-    rad2deg: sn_math_rad2deg
-  };
-  /**
- * Convert degrees to radians.
- * 
- * @param {number} deg - the degrees value to convert to radians
- * @returns {number} the radians
- * @preserve
- */
-  function sn_math_deg2rad(deg) {
-    return deg * Math.PI / 180;
-  }
-  /**
- * Convert radians to degrees.
- * 
- * @param {number} rad - the radians value to convert to degrees
- * @returns {number} the degrees
- * @preserve
- */
-  function sn_math_rad2deg(rad) {
-    return rad * 180 / Math.PI;
-  }
   /**
  * An analog, circular gauge styled like a speedometer.
  *
