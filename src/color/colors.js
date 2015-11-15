@@ -1,4 +1,6 @@
-sn.color = {
+import "color";
+
+sn.color.colors = {
 	steelblue: ['#356287', '#4682b4', '#6B9BC3', '#89AFCF', '#A1BFD9', '#B5CDE1', '#DAE6F0'],
 	triplets : [
 		'#3182bd', '#6baed6', '#9ecae1', 

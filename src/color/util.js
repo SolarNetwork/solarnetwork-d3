@@ -1,3 +1,4 @@
+import "color";
 import "../core/runtime";
 
 sn.color.map = sn_color_map;
