@@ -8,7 +8,7 @@ sn.api.node.availableSources = sn_api_node_availableSources;
  * <p>The callback function will be passed an error object and the array of sources.
  * 
  * @param {sn.api.node.nodeUrlHelper} urlHelper A {@link sn.api.node.nodeUrlHelper} or 
-                                             {@link sn.datum.locationUrlHelper} object.
+                                             {@link sn.api.loc.locationUrlHelper} object.
  * @param {Function} callback A callback function which will be passed an error object
  *                            and the result array.
  * @preserve

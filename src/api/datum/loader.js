@@ -11,7 +11,7 @@ import "../../net/net";
  * 
  * @class
  * @param {string[]} sourceIds - array of source IDs to load data for
- * @param {function} urlHelper - a {@link sn.nodeUrlHelper} or {@link sn.locationUrlHelper}
+ * @param {function} urlHelper - a {@link sn.api.node.nodeUrlHelper} or {@link sn.api.loc.locationUrlHelper}
  * @param {date} start - the start date, or {@code null}
  * @param {date} end - the end date, or {@code null}
  * @param {string} aggregate - aggregate level

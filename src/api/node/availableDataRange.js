@@ -13,7 +13,7 @@ sn.api.node.availableDataRange = sn_api_node_availableDataRange;
  * 
  * @param {Array} sourceSets An array of objects, each with a {@code sourceIds} array 
  *                property and a {@code nodeUrlHelper} {@code sn.api.node.nodeUrlHelper}
- *                or {@code locationUrlHelper} {@code sn.datum.locationUrlHelper}
+ *                or {@code locationUrlHelper} {@code sn.api.loc.locationUrlHelper}
  *                propery.
  * @param {Function} [callback] A callback function which will be passed the result object.
  * @preserve
