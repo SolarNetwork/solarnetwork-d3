@@ -22,6 +22,7 @@ sn.api.control.toggler = function(urlHelper) {
 	var pendingRefreshMs = 5000;
 	var controlID = '/power/switch/1';
 	var nodeUrlHelper = urlHelper;
+	var secHelper = sn.net.sec;
 	
 	function notifyDelegate(error) {
 		if ( callback !== undefined ) {
@@ -76,14 +77,14 @@ sn.api.control.toggler = function(urlHelper) {
 		if ( pendingState === 'Queued' && pendingValue !== desiredValue ) {
 			// cancel the pending instruction
 			sn.log('Canceling {2} pending control {0} switch to {1}', controlID,  pendingValue, nodeUrlHelper.keyDescription());
-			q.defer(sn.sec.json, nodeUrlHelper.updateInstructionStateURL(lastKnownInstruction.id, 'Declined'), 'POST');
+			q.defer(secHelper.json, nodeUrlHelper.updateInstructionStateURL(lastKnownInstruction.id, 'Declined'), 'POST');
 			lastKnownInstruction = undefined;
 			pendingState = undefined;
 			pendingValue = undefined;
 		}
 		if ( currentValue !== desiredValue && pendingValue !== desiredValue ) {
 			sn.log('Request {2} to change control {0} to {1}', controlID, desiredValue, nodeUrlHelper.keyDescription());
-			q.defer(sn.sec.json, nodeUrlHelper.queueInstructionURL('SetControlParameter', 
+			q.defer(secHelper.json, nodeUrlHelper.queueInstructionURL('SetControlParameter', 
 				[{name:controlID, value:String(desiredValue)}]), 'POST');
 		}
 		q.awaitAll(function(error, results) {
@@ -137,13 +138,13 @@ sn.api.control.toggler = function(urlHelper) {
 	
 	function update() {
     	var q = queue();
-		q.defer((nodeUrlHelper.secureQuery ? sn.sec.json : d3.json), nodeUrlHelper.mostRecentURL([controlID]));
-		if ( sn.sec.hasTokenCredentials() === true ) {
-			q.defer(sn.sec.json, nodeUrlHelper.viewPendingInstructionsURL(), 'GET');
+		q.defer((nodeUrlHelper.secureQuery ? secHelper.json : d3.json), nodeUrlHelper.mostRecentURL([controlID]));
+		if ( secHelper.hasTokenCredentials() === true ) {
+			q.defer(secHelper.json, nodeUrlHelper.viewPendingInstructionsURL(), 'GET');
 			if ( lastKnownInstruction && ['Completed', 'Declined'].indexOf(lastKnownInstructionState()) < 0 ) {
 				// also refresh this specific instruction, to know when it goes to Completed so we can
 				// assume the control value has changed, even if the mostRecent data lags behind
-				q.defer(sn.sec.json, nodeUrlHelper.viewInstruction(lastKnownInstruction.id));
+				q.defer(secHelper.json, nodeUrlHelper.viewInstruction(lastKnownInstruction.id));
 			}
 		}
 		q.await(function(error, status, active, executing) {
@@ -169,7 +170,7 @@ sn.api.control.toggler = function(urlHelper) {
 								: pendingInstruction ? pendingInstruction : lastKnownInstruction));
 				var currValue = value();
 				if ( (newValue !== currValue) 
-					|| lastHadCredentials !==  sn.sec.hasTokenCredentials() ) {
+					|| lastHadCredentials !==  secHelper.hasTokenCredentials() ) {
 					sn.log('Control {0} for {1} value is currently {2}', controlID, 
 						nodeUrlHelper.keyDescription(),
 						(newValue !== undefined ? newValue : 'N/A'));
@@ -178,7 +179,7 @@ sn.api.control.toggler = function(urlHelper) {
 						lastKnownStatus.val = newValue; // force this, because instruction value might be newer than status value
 					}
 					lastKnownInstruction = (execInstruction ? execInstruction : pendingInstruction);
-					lastHadCredentials = sn.sec.hasTokenCredentials();
+					lastHadCredentials = secHelper.hasTokenCredentials();
 					
 					// invoke the client callback so they know the data has been updated
 					notifyDelegate();
