@@ -1,4 +1,5 @@
 import "chart";
+import "../math/math";
 
 /**
  * An analog, circular gauge styled like a speedometer.
@@ -74,11 +75,11 @@ sn.chart.gauge = function(container, configuration) {
 			.outerRadius(r - config.ringInset)
 			.startAngle(function(d, i) {
 				var ratio = d * i;
-				return sn.deg2rad(config.minAngle + (ratio * range));
+				return sn.math.deg2rad(config.minAngle + (ratio * range));
 			})
 			.endAngle(function(d, i) {
 				var ratio = d * (i+1);
-				return sn.deg2rad(config.minAngle + (ratio * range));
+				return sn.math.deg2rad(config.minAngle + (ratio * range));
 			});
 	}
 	that.configure = configure;

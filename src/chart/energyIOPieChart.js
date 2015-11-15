@@ -1,5 +1,6 @@
 import "chart";
 import "../config/Configuration"
+import "../math/math";
 import "../ui/pixelWidth";
 
 /**
@@ -162,7 +163,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			angle : a,
 			angleStart : d.startAngle,
 			angleEnd : d.endAngle,
-			degrees : sn.rad2deg(a),
+			degrees : sn.math.rad2deg(a),
 			radius : r,
 			innerRadius : innerRadius,
 			center : [(w + p[1] + p[3]) / 2, (h + p[0] + p[2]) / 2],
