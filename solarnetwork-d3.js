@@ -1063,6 +1063,80 @@
     };
     return that;
   };
+  sn.api.datum.nestedStackDataNormalizeByDate = sn_api_datum_nestedStackDataNormalizeByDate;
+  /**
+ * Normalize the data arrays resulting from a <code>d3.nest</code> operation so that all
+ * group value arrays have the same number of elements, based on a Date property named 
+ * <code>date</code>. The data values are assumed to be sorted by <code>date</code> already.
+ * The value arrays are modified in-place. This makes the data suitable to passing to 
+ * <code>d3.stack</code>, which expects all stack data arrays to have the same number of 
+ * values, for the same keys.
+ * 
+ * The <code>layerData</code> parameter should look something like this:
+ * 
+ * <pre>[
+ *   { key : 'A', values : [{date : Date(2011-12-02 12:00)}, {date : Date(2011-12-02 12:10)}] },
+ *   { key : 'B', values : [{date : Date(2011-12-02 12:00)}] }
+ * ]</pre>
+ * 
+ * After calling this method, <code>layerData</code> would look like this (notice the 
+ * filled in secod data value in the <b>B</b> group):
+ * 
+ * <pre>[
+ *   { key : 'A', values : [{date : Date(2011-12-02 12:00)}, {date : Date(2011-12-02 12:10)}] },
+ *   { key : 'B', values : [{date : Date(2011-12-02 12:00)}, {date : Date(2011-12-02 12:10)}] }] }
+ * ]</pre>
+ * 
+ * @param {array} layerData - An arry of objects, each object with a <code>key</code> group ID
+ *                            and a <code>values</code> array of data objects.
+ * @param {object} fillTemplate - An object to use as a template for any "filled in" data objects.
+ *                                The <code>date</code> property will be populated automatically.
+ *
+ * @param {array} fillFn - An optional function to fill in objects with.
+ * @since 0.0.4
+ * @preserve
+ */
+  function sn_api_datum_nestedStackDataNormalizeByDate(layerData, fillTemplate, fillFn) {
+    var i = 0, j, k, jMax = layerData.length - 1, dummy, prop, copyIndex;
+    if (jMax > 0) {
+      while (i < d3.max(layerData.map(function(e) {
+        return e.values.length;
+      }))) {
+        dummy = undefined;
+        for (j = 0; j <= jMax; j++) {
+          if (layerData[j].values.length <= i) {
+            continue;
+          }
+          if (j < jMax) {
+            k = j + 1;
+          } else {
+            k = 0;
+          }
+          if (layerData[k].values.length <= i || layerData[j].values[i].date.getTime() < layerData[k].values[i].date.getTime()) {
+            dummy = {
+              date: layerData[j].values[i].date,
+              sourceId: layerData[k].key
+            };
+            if (fillTemplate) {
+              for (prop in fillTemplate) {
+                if (fillTemplate.hasOwnProperty(prop)) {
+                  dummy[prop] = fillTemplate[prop];
+                }
+              }
+            }
+            if (fillFn) {
+              copyIndex = layerData[k].values.length > i ? i : i > 0 ? i - 1 : null;
+              fillFn(dummy, layerData[k].key, copyIndex !== null ? layerData[k].values[copyIndex] : undefined);
+            }
+            layerData[k].values.splice(i, 0, dummy);
+          }
+        }
+        if (dummy === undefined) {
+          i++;
+        }
+      }
+    }
+  }
   /**
  * Calculate a sum total aggregate for a single property over all time on a single SolarNode
  * for a set of source IDs. The class periodically updates the total as time progresses, to
@@ -3118,7 +3192,7 @@
         dummy[self.internalPropName] = {
           groupId: groupId
         };
-        sn.nestedStackDataNormalizeByDate(layerData, dummy);
+        sn.api.datum.nestedStackDataNormalizeByDate(layerData, dummy);
         if (normalizeDataTimeGaps === true) {
           parent.insertNormalizedDurationIntoLayerData(layerData);
         }
@@ -4988,7 +5062,7 @@
       }
       dummy = {};
       dummy[plotPropName] = null;
-      sn.nestedStackDataNormalizeByDate(layerData, dummy, function(dummy, key) {
+      sn.api.datum.nestedStackDataNormalizeByDate(layerData, dummy, function(dummy, key) {
         var idx = key.indexOf("|");
         dummy[parent.internalPropName] = {
           groupId: key.slice(0, idx)
@@ -5433,7 +5507,8 @@
     };
     return self;
   };
-  sn.color = {
+  sn.color = {};
+  sn.color.colors = {
     steelblue: [ "#356287", "#4682b4", "#6B9BC3", "#89AFCF", "#A1BFD9", "#B5CDE1", "#DAE6F0" ],
     triplets: [ "#3182bd", "#6baed6", "#9ecae1", "#e6550d", "#fd8d3c", "#fdae6b", "#31a354", "#74c476", "#a1d99b", "#756bb1", "#9e9ac8", "#bcbddc", "#843c39", "#ad494a", "#d6616b", "#8c6d31", "#bd9e39", "#e7ba52", "#7b4173", "#a55194", "#ce6dbd" ],
     seasonColors: [ "#5c8726", "#e9a712", "#762123", "#80a3b7" ]
@@ -5489,6 +5564,183 @@
     return sn.runtime.colorData.reduce(function(c, obj) {
       return obj.source === d.source ? obj.color : c;
     }, sn.runtime.colorData[0].color);
+  }
+  sn.color.sourceColorMapping = sn_color_sourceColorMapping;
+  /**
+ * @typedef sn.color.sourceColorMappingParameters
+ * @type {object}
+ * @property {function} [displayDataType] a function that accepts a data type and returns the display
+ *                                        version of that data type
+ * @property {function} [displayColor] a function that accepts a data type and a Colorbrewer color group
+ * @property {boolean} [reverseColors] the Colorbrewer colors are reversed, unless this is set to {@code false}
+ * @preserve
+ */
+  /**
+ * @typedef sn.color.sourceColorMap
+ * @type {object}
+ * @property {array} sourceList An array of full source names for display purposes.
+ * TODO
+ * @preserve
+ */
+  /**
+ * Create mapping of raw sources, grouped by data type, to potentially alternate names,
+ * and assign Colorbrewer color values to each source.
+ * 
+ * The input {@code sourceMap} should contain a mapping of data types to associatd arrays
+ * of sources. This is the format returned by {@link sn.availableDataRange}, on the 
+ * {@code availableSourcesMap} property. For example:
+ * 
+ * <pre>
+ * {
+ *     'Consumption' : [ 'Main', 'Shed' ],
+ *     'Power' : [ 'Main' ]
+ * }
+ * </pre>
+ * 
+ * The returned {@link sn.color.sourceColorMap} object contains 
+ * 
+ * <pre>
+ * {
+ *     sourceList : [ 'Consumption / Main', 'Consumption / Shed', 'Power / Main' ]
+ *     displaySourceMap : {
+ *         Consumption : {
+ *             Main : 'Consumption / Main',
+ *             Shed : 'Consumption / Shed'
+ *         },
+ *         Power : {
+ *             Main : 'Power / Main'
+ *         }
+ *     },
+ *     displaySourceObjects : {
+ *         'Consumption / Main' : { dataType : 'Consumption', source : 'Main' },
+ *         'Consumption / Shed' : { dataType : 'Consumption', source : 'Shed' },
+ *         'Power / Main' : { dataType : 'Power', source : 'Main' }
+ *     },
+ *     reverseDisplaySourceMap : {
+ *         Consumption : {
+ *             'Consumption / Main' : 'Main',
+ *             'Consumption / Shed' : 'Shed'
+ *         },
+ *         Power : {
+ *             'Power / Main' : 'Main',
+ *         }
+ *     },
+ *     colorList : [ 'red', 'light-red', 'green' ]
+ *     colorMap : {
+ *         'Consumption / Main' : 'red',
+ *         'Consumption / Shed' : 'light-red',
+ *         'Power / Main' : 'green'
+ *     }
+ * }
+ * </pre>
+ * 
+ * @params {sn.color.sourceColorMappingParameters} [params] the parameters
+ * @returns {sn.color.sourceColorMap}
+ * @preserve
+ */
+  function sn_color_sourceColorMapping(sourceMap, params) {
+    var p = params || {};
+    var chartSourceMap = {};
+    var dataType;
+    var sourceList = [];
+    var colorGroup;
+    var sourceColors = [];
+    var typeSourceList = [];
+    var colorGroupIndex;
+    var colorSlice;
+    var result = {};
+    var displayDataTypeFn;
+    var displaySourceFn;
+    var displayColorFn;
+    var displayToSourceObjects = {};
+    if (typeof p.displayDataType === "function") {
+      displayDataTypeFn = p.displayDataType;
+    } else {
+      displayDataTypeFn = function(dataType) {
+        return dataType === "Power" ? "Generation" : dataType;
+      };
+    }
+    if (typeof p.displaySource === "function") {
+      displaySourceFn = p.displaySource;
+    } else {
+      displaySourceFn = function(dataType, sourceId) {
+        !dataType;
+        return sourceId;
+      };
+    }
+    if (typeof p.displayColor === "function") {
+      displayColorFn = p.displayColor;
+    } else {
+      displayColorFn = function(dataType) {
+        return dataType === "Consumption" ? colorbrewer.Blues : colorbrewer.Greens;
+      };
+    }
+    function mapSources(dtype) {
+      sourceMap[dtype].forEach(function(el) {
+        var mappedSource;
+        if (el === "" || el === "Main") {
+          mappedSource = displayDataTypeFn(dtype);
+        } else {
+          mappedSource = displayDataTypeFn(dtype) + " / " + displaySourceFn(dtype, el);
+        }
+        chartSourceMap[dtype][el] = mappedSource;
+        if (el === "Main") {
+          chartSourceMap[dtype][""] = mappedSource;
+        }
+        typeSourceList.push(mappedSource);
+        sourceList.push(mappedSource);
+        displayToSourceObjects[mappedSource] = {
+          dataType: dtype,
+          source: el,
+          display: mappedSource
+        };
+      });
+    }
+    for (dataType in sourceMap) {
+      if (sourceMap.hasOwnProperty(dataType)) {
+        chartSourceMap[dataType] = {};
+        typeSourceList.length = 0;
+        mapSources(dataType);
+        colorGroup = displayColorFn(dataType);
+        if (colorGroup[typeSourceList.length] === undefined) {
+          colorGroupIndex = function() {
+            var i;
+            for (i = typeSourceList.length; i < 30; i += 1) {
+              if (colorGroup[i] !== undefined) {
+                return i;
+              }
+            }
+            return 0;
+          }();
+        } else {
+          colorGroupIndex = typeSourceList.length;
+        }
+        colorSlice = colorGroup[colorGroupIndex].slice(-typeSourceList.length);
+        if (p.reverseColors !== false) {
+          colorSlice.reverse();
+        }
+        sourceColors = sourceColors.concat(colorSlice);
+      }
+    }
+    var reverseDisplaySourceMap = {};
+    var sourceId, displayMap;
+    for (dataType in chartSourceMap) {
+      if (chartSourceMap.hasOwnProperty(dataType)) {
+        reverseDisplaySourceMap[dataType] = {};
+        displayMap = chartSourceMap[dataType];
+        for (sourceId in displayMap) {
+          if (displayMap.hasOwnProperty(sourceId)) {
+            reverseDisplaySourceMap[displayMap[sourceId]] = sourceId;
+          }
+        }
+      }
+    }
+    result.sourceList = sourceList;
+    result.displaySourceMap = chartSourceMap;
+    result.reverseDisplaySourceMap = reverseDisplaySourceMap;
+    result.colorMap = sn.color.map(sourceColors, sourceList);
+    result.displaySourceObjects = displayToSourceObjects;
+    return result;
   }
   sn.counter = sn_counter;
   function sn_counter() {
