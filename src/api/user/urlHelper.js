@@ -40,7 +40,7 @@ sn.api.user.userUrlHelper = function(configuration) {
 	 * Get a URL for just the SolarNet host, without any path.
 	 *
 	 * @returns {String} the URL to the SolarNet host
-	 * @memberOf sn.datum.nodeUrlHelper
+	 * @memberOf sn.api.user.userUrlHelper
 	 * @preserve
 	 */
 	function hostURL() {
