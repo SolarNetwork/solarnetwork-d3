@@ -880,7 +880,7 @@
  * 
  * @class
  * @param {string[]} sourceIds - array of source IDs to load data for
- * @param {function} urlHelper - a {@link sn.nodeUrlHelper} or {@link sn.locationUrlHelper}
+ * @param {function} urlHelper - a {@link sn.api.node.nodeUrlHelper} or {@link sn.api.loc.locationUrlHelper}
  * @param {date} start - the start date, or {@code null}
  * @param {date} end - the end date, or {@code null}
  * @param {string} aggregate - aggregate level
@@ -1330,7 +1330,7 @@
  * 
  * @param {Array} sourceSets An array of objects, each with a {@code sourceIds} array 
  *                property and a {@code nodeUrlHelper} {@code sn.api.node.nodeUrlHelper}
- *                or {@code locationUrlHelper} {@code sn.datum.locationUrlHelper}
+ *                or {@code locationUrlHelper} {@code sn.api.loc.locationUrlHelper}
  *                propery.
  * @param {Function} [callback] A callback function which will be passed the result object.
  * @preserve
@@ -1402,7 +1402,7 @@
  * <p>The callback function will be passed an error object and the array of sources.
  * 
  * @param {sn.api.node.nodeUrlHelper} urlHelper A {@link sn.api.node.nodeUrlHelper} or 
-                                             {@link sn.datum.locationUrlHelper} object.
+                                             {@link sn.api.loc.locationUrlHelper} object.
  * @param {Function} callback A callback function which will be passed an error object
  *                            and the result array.
  * @preserve
