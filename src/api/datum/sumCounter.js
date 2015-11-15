@@ -1,4 +1,5 @@
 import "datum";
+import "loader";
 
 /**
  * Calculate a sum total aggregate for a single property over all time on a single SolarNode
@@ -46,7 +47,7 @@ sn.api.datum.sumCounter = function(nodeUrlHelper) {
 	}
 	
 	function performSum(finishedCallback) {
-		sn.datum.loader(sourceIds, nodeUrlHelper, null, null, 'RunningTotal')
+		sn.api.datum.loader(sourceIds, nodeUrlHelper, null, null, 'RunningTotal')
 			.callback(function(error, results) {
 				var sum	= (error ? 0 : sumResults(results));
 				aggValue = sum;

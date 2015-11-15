@@ -949,7 +949,7 @@
   };
   sn.api.datum.loaderQueryRange = sn_api_datum_loaderQueryRange;
   /**
- * Get a query range appropriate for using with {@link sn.datum.loader}. Returns an object
+ * Get a query range appropriate for using with {@link sn.api.datum.loader}. Returns an object
  * with <code>start</code> and <code>end</code> Date properties, using the given <code>endDate</code>
  * parameter as the basis for calculating the start as an offset, based on the given <code>aggregate</code>
  * level.
@@ -1099,7 +1099,7 @@
       return sum;
     }
     function performSum(finishedCallback) {
-      sn.datum.loader(sourceIds, nodeUrlHelper, null, null, "RunningTotal").callback(function(error, results) {
+      sn.api.datum.loader(sourceIds, nodeUrlHelper, null, null, "RunningTotal").callback(function(error, results) {
         var sum = error ? 0 : sumResults(results);
         aggValue = sum;
         finishedCallback();
