@@ -34,27 +34,27 @@ sn.net.securityHelper = function() {
 	 * Get or set the in-memory security token to use.
 	 *
 	 * @param {String} [value] The value to set, or <code>null</code> to clear.
-	 * @returs When used as a getter, the current token value, otherwise the {@link sn.sec} object.
+	 * @returs When used as a getter, the current token value, otherwise this object.
 	 * @preserve
 	 */
 	function token(value) {
 		if ( !arguments.length ) return cred.token;
 		cred.token = (value && value.length > 0 ? value : undefined);
-		return sn.sec;
+		return that;
 	}
 
 	/**
 	 * Set the in-memory security token secret to use.
 	 *
 	 * @param {String} [value] The value to set.
-	 * @returns The {@link sn.sec} object.
+	 * @returns This object.
 	 * @preserve
 	 */
 	function secret(value) {
 		if ( arguments.length ) {
 			cred.secret = value;
 		}
-		return sn.sec;
+		return that;
 	}
 
 	/**
@@ -70,12 +70,12 @@ sn.net.securityHelper = function() {
 	/**
 	 * Clear the in-memory secret.
 	 * 
-	 * @returns The {@link sn.sec} object.
+	 * @returns This object.
 	 * @preserve
 	 */
 	function clearSecret() {
 		cred.secret = undefined;
-		return sn.sec;
+		return that;
 	}
 
 	/**
@@ -171,7 +171,7 @@ sn.net.securityHelper = function() {
 		var path = a.pathname;
 	
 		// handle query params, which must be sorted
-		var params = sn.sec.parseURLQueryTerms(data === undefined ? a.search : data);
+		var params = parseURLQueryTerms(data === undefined ? a.search : data);
 		var sortedKeys = [], key = undefined;
 		var i, len;
 		var first = true;
@@ -265,11 +265,11 @@ sn.net.securityHelper = function() {
 			var date = new Date().toUTCString();		
 		
 			// construct our canonicalized path value from our URL
-			var path = sn.sec.authURLPath(url, 
+			var path = authURLPath(url, 
 				(contentType !== undefined && contentType.indexOf('application/x-www-form-urlencoded') === 0 ? data : undefined));
 		
 			// generate the authorization hash value now (cryptographically signing our request)
-			var auth = sn.sec.generateAuthorizationHeaderValue({
+			var auth = generateAuthorizationHeaderValue({
 				method: method,
 				date: date,
 				path: path,
