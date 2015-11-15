@@ -115,7 +115,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 		// fill in "holes" for each stack layer, if more than one layer. we assume data already sorted by date
 		dummy = {};
 		dummy[plotPropName] = null;
-		sn.nestedStackDataNormalizeByDate(layerData, dummy, function(dummy, key) {
+		sn.api.datum.nestedStackDataNormalizeByDate(layerData, dummy, function(dummy, key) {
 			var idx = key.indexOf('|');
 			dummy[parent.internalPropName] = { groupId : key.slice(0, idx) };
 			dummy.sourceId = key.slice(idx + 1);

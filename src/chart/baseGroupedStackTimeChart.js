@@ -151,7 +151,7 @@ sn.chart.baseGroupedStackTimeChart = function(containerSelector, chartConfig) {
 			dummy = {};
 			dummy[plotPropName] = null;
 			dummy[self.internalPropName] = {groupId : groupId};
-			sn.nestedStackDataNormalizeByDate(layerData, dummy);
+			sn.api.datum.nestedStackDataNormalizeByDate(layerData, dummy);
 			
 			if ( normalizeDataTimeGaps === true ) {
 				// now look to fill in "zero" values to make interpolation look better
