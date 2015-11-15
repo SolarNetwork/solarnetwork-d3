@@ -1,4 +1,6 @@
 import "baseGroupedTimeChart";
+import "../color/colors";
+import "../format/seasons";
 
 /**
  * An abstract base chart supporting seasonal aggregate groups.
@@ -58,7 +60,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 
 	function seasonColorFn(d, i) {
 		!d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
-		var seasonColors = (parent.config.seasonColors || sn.seasonColors);
+		var seasonColors = (parent.config.seasonColors || sn.color.colors.seasonColors);
 		var season = ((i + (northernHemisphere ? 0 : 2)) % 4);
 		return seasonColors[season];
 	}
@@ -152,7 +154,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 							// automatically create Date
 							d.date = sn.api.datum.datumDate(d);
 						}
-						d.season = sn.seasonForDate(d.date);
+						d.season = sn.format.seasonForDate(d.date);
 						d.timeKey = timeKeyForDate(d.date);
 					}
 					
