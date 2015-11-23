@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue) {
   "use strict";
   var sn = {
-    version: "0.9.0"
+    version: "0.9.1"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -1919,11 +1919,14 @@
       ruleOpacity = config.value("ruleOpacity") || .1;
       vertRuleOpacity = config.value("vertRuleOpacity") || .05;
     }
-    svgRoot = d3.select(containerSelector).select("svg");
-    if (svgRoot.empty()) {
-      svgRoot = d3.select(containerSelector).append("svg:svg");
+    svgRoot = d3.select(containerSelector);
+    if (svgRoot.node() && svgRoot.node().tagName.toLowerCase() !== "svg") {
+      svgRoot = svgRoot.select("svg");
+      if (svgRoot.empty()) {
+        svgRoot = d3.select(containerSelector).append("svg:svg");
+      }
+      svgRoot.attr("class", "chart").attr("width", w + p[1] + p[3]).attr("height", h + p[0] + p[2]).selectAll("*").remove();
     }
-    svgRoot.attr("class", "chart").attr("width", w + p[1] + p[3]).attr("height", h + p[0] + p[2]).selectAll("*").remove();
     svgDataRoot = svgRoot.append("g").attr("class", "data-root").attr("transform", "translate(" + p[3] + "," + p[0] + ")");
     svgTickGroupX = svgRoot.append("g").attr("class", "ticks").attr("transform", "translate(" + p[3] + "," + (h + p[0] + p[2]) + ")");
     svgRoot.append("g").attr("class", "crisp rule").attr("transform", "translate(0," + p[0] + ")");
@@ -2024,7 +2027,7 @@
     }
     /**
 	 * Scale a date for the x-axis.
-	 * 
+	 *
 	 * @param {Date} the Date to scale
 	 * @return {Number} the scaled value
 	 * @memberOf sn.chart.baseTimeChart
@@ -2035,7 +2038,7 @@
     };
     /**
 	 * Scale a value for the y-axis.
-	 * 
+	 *
 	 * @param {Number} the value to scale
 	 * @return {Number} the scaled value
 	 * @memberOf sn.chart.baseTimeChart
@@ -2046,7 +2049,7 @@
     };
     /**
 	 * Get the x-axis domain (minimum and maximum dates).
-	 * 
+	 *
 	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -2056,7 +2059,7 @@
     };
     /**
 	 * Get the y-axis domain (minimum and maximum values).
-	 * 
+	 *
 	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -2069,7 +2072,7 @@
 	 * After calling the {@link #load()} method, however, the chart may decide to scale
 	 * the y-axis for clarity. You can call this method to find out the scaling factor the
 	 * chart ended up using.
-	 *  
+	 *
 	 * @return the y-axis scale factor
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -2079,7 +2082,7 @@
     };
     /**
 	 * Get the current {@code aggregate} value in use.
-	 * 
+	 *
 	 * @param {number} [value] the number of consumption sources to use
 	 * @returns when used as a getter, the count number, otherwise this object
 	 * @returns the {@code aggregate} value
@@ -2094,7 +2097,7 @@
     };
     /**
 	 * Get the expected normalized duration, in milliseconds, based on the configured aggregate level.
-	 * 
+	 *
 	 * @returns The expected normalized millisecond duration for the configured aggregate level.
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -2178,9 +2181,9 @@
       return new Date(date.getTime() + self.aggregateNormalizedDuration());
     };
     /**
-	 * Clear out all data associated with this chart. Does not redraw. If 
+	 * Clear out all data associated with this chart. Does not redraw. If
 	 * {@link hoverLeaveCallback} is defined, it will be called with no arguments.
-	 * 
+	 *
 	 * @return this object
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -2193,7 +2196,7 @@
     };
     /**
 	 * Regenerate the chart, using the current data.
-	 * 
+	 *
 	 * @returns this object
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -2209,7 +2212,7 @@
     };
     /**
 	 * Get or set the animation transition time, in milliseconds.
-	 * 
+	 *
 	 * @param {number} [value] the number of milliseconds to use
 	 * @return when used as a getter, the millisecond value, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2222,9 +2225,9 @@
     };
     /**
 	 * Get or set the plot property names for all supported aggregate levels.
-	 * 
+	 *
 	 * When used as a setter, an Object with properties of the following names are supported:
-	 * 
+	 *
 	 * <ul>
 	 *   <li>FiveMinute</li>
 	 *   <li>TenMinute</li>
@@ -2237,10 +2240,10 @@
 	 *   <li>SeasonalDayOfWeek</li>
 	 *   <li>Month</li>
 	 * </ul>
-	 * 
+	 *
 	 * Each value should be the string name of the datum property to plot on the y-axis of the chart.
 	 * If an aggregate level is not defined, it will default to {@code watts}.
-	 * 
+	 *
 	 * @param {object} [value] the aggregate property names to use
 	 * @return when used as a getter, the current plot property value mapping object, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2256,10 +2259,10 @@
       return me;
     };
     /**
-	 * Get or set the display factor callback function. The callback will be passed the absolute maximum 
+	 * Get or set the display factor callback function. The callback will be passed the absolute maximum
 	 * Y domain value as an argument. It should return a number representing the scale factor to use
 	 * in Y-axis labels.
-	 * 
+	 *
 	 * @param {function} [value] the display factor exclude callback
 	 * @return when used as a getter, the current display factor callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2278,7 +2281,7 @@
 	 * Get or set the draw annotations callback function, which is called after the chart completes drawing.
 	 * The function will be passed a SVG <code>&lt;g class="annot-root"&gt;</code> element that
 	 * represents the drawing area for the chart data.
-	 * 
+	 *
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current draw callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2303,7 +2306,7 @@
     /**
 	 * Get or set a mouseover callback function, which is called in response to mouse entering
 	 * the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse enter callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2324,7 +2327,7 @@
     /**
 	 * Get or set a mousemove callback function, which is called in response to mouse movement
 	 * over the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the hover callback
 	 * @return when used as a getter, the current hover callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2346,7 +2349,7 @@
     /**
 	 * Get or set a mouseout callback function, which is called in response to mouse leaving
 	 * the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse leave callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2367,7 +2370,7 @@
     /**
 	 * Get or set a dblclick callback function, which is called in response to mouse double click
 	 * events on the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the double click callback
 	 * @return when used as a getter, the current double click callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2388,7 +2391,7 @@
     /**
 	 * Get or set a range selection callback function, which is called in response to mouse click or touch start
 	 * events on the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the range selection callback
 	 * @return when used as a getter, the current range selection callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2408,9 +2411,9 @@
     };
     /**
 	 * Get or set the x-axis tick callback function, which is called during x-axis rendering.
-	 * The function will be passed a data object, the index, the d3 scale, and the number of 
+	 * The function will be passed a data object, the index, the d3 scale, and the number of
 	 * ticks requested. The <code>this</code> object will be set to the chart instance.
-	 * 
+	 *
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current x-axis tick callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2426,7 +2429,7 @@
     /**
 	 * Get or set the axis rule opacity value, which is used during axis rendering.
 	 * Defaults to <b>0.1</b>.
-	 * 
+	 *
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current axis rule opacity value, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -2440,7 +2443,7 @@
     /**
 	 * Get or set the vertical axis rule opacity value, which is used during axis rendering.
 	 * Defaults to <b>0.05</b>.
-	 * 
+	 *
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current vertical axis rule opacity value, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -4548,11 +4551,11 @@
   /**
  * A power input and output chart designed to show consumption and generation data as an overall
  * percentage.
- * 
+ *
  * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
  * in the chart. After changing the configuration call {@link sn.chart.energyIOPieChart#regenerate()}
  * to re-draw the chart.
- * 
+ *
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.energyIOPieChartParameters} [chartConfig] - the chart parameters
@@ -4661,11 +4664,14 @@
       arc.innerRadius(innerRadius).outerRadius(r);
     }
     parseConfiguration();
-    svgRoot = d3.select(containerSelector).select("svg");
-    if (svgRoot.empty()) {
-      svgRoot = d3.select(containerSelector).append("svg:svg").attr("class", "chart").attr("width", w + p[1] + p[3]).attr("height", h + p[0] + p[2]);
-    } else {
-      svgRoot.selectAll("*").remove();
+    svgRoot = d3.select(containerSelector);
+    if (svgRoot.node() && svgRoot.node().tagName.toLowerCase() !== "svg") {
+      svgRoot = svgRoot.select("svg");
+      if (svgRoot.empty()) {
+        svgRoot = d3.select(containerSelector).append("svg:svg").attr("class", "chart").attr("width", w + p[1] + p[3]).attr("height", h + p[0] + p[2]);
+      } else {
+        svgRoot.selectAll("*").remove();
+      }
     }
     chartData = svgRoot.append("g").attr("class", "data").attr("transform", "translate(" + (w + p[1] + p[3]) / 2 + "," + (h + p[0] + p[2]) / 2 + ")");
     chartLabels = svgRoot.append("g").attr("class", "label").attr("transform", "translate(" + (w + p[1] + p[3]) / 2 + "," + (h + p[0] + p[2]) / 2 + ")");
