@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue) {
   "use strict";
   var sn = {
-    version: "0.9.1"
+    version: "0.9.3"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -3715,7 +3715,7 @@
  */
   /**
  * A basic line chart without groupings.
- * 
+ *
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.basicLineChartParameters} [chartConfig] - the chart parameters
@@ -3742,12 +3742,13 @@
       var lineId = this.getAttribute("class"), plotProp = linePlotProperties[lineId] ? linePlotProperties[lineId] : parent.plotPropertyName, val = d[plotProp];
       return Math.round(parent.y(val === undefined ? null : val) + .5) - .5;
     });
+    var colorArray;
     var colors = d3.scale.ordinal().range(colorbrewer.Set3[12]);
     /**
-	 * Add data for a single line in the chart. The data is appended if data has 
-	 * already been loaded for the given line ID. This does not redraw the chart. 
+	 * Add data for a single line in the chart. The data is appended if data has
+	 * already been loaded for the given line ID. This does not redraw the chart.
 	 * Once all line data has been loaded, call {@link #regenerate()} to draw.
-	 * 
+	 *
 	 * @param {Array} rawData - The raw chart data to load.
 	 * @param {String} lineId - The ID to associate with the data; each line must have its own ID
 	 * @param {String} plotProperty - A property of the raw data to plot for the line. If not specified,
@@ -3772,10 +3773,10 @@
       return self;
     };
     /**
-	 * Get or set the source exclude callback function. The callback will be passed the line ID 
+	 * Get or set the source exclude callback function. The callback will be passed the line ID
 	 * as an argument. It should true <em>true</em> if the data set for the given argument
 	 * should be excluded from the chart.
-	 * 
+	 *
 	 * @param {function} [value] the source exclude callback
 	 * @return when used as a getter, the current source exclude callback function, otherwise this object
 	 * @memberOf sn.chart.basicLineChart
@@ -3793,15 +3794,16 @@
     /**
 	 * Get or set a range of colors to display. The order of the the data passed to the {@link load()}
 	 * function will determine the color used from the configured {@code colorArray}.
-	 * 
-	 * @param {Array} colorArray An array of valid SVG color values to set.
+	 *
+	 * @param {Array} array An array of valid SVG color values to set.
 	 * @return when used as a getter, the current color array, otherwise this object
 	 * @memberOf sn.chart.basicLineChart
 	 * @preserve
 	 */
-    self.colors = function(colorArray) {
+    self.colors = function(array) {
       if (!arguments.length) return colors.range();
-      colors.range(colorArray);
+      colorArray = array;
+      colors.range(array);
       return self;
     };
     /**
@@ -3857,7 +3859,10 @@
         }
         lineDrawData.push(rawLineData);
       });
-      colors.domain(lineIds.length).range(colorbrewer.Set3[lineIds.length < 3 ? 3 : lineIds.length > 11 ? 12 : lineIds.length]);
+      colors.domain(lineIds.length);
+      if (!(colorArray && colorArray.length > 0)) {
+        colors.range(colorbrewer.Set3[lineIds.length < 3 ? 3 : lineIds.length > 11 ? 12 : lineIds.length]);
+      }
       parent.x.domain(rangeX);
       parent.y.domain(rangeY).nice();
       parent.computeUnitsY();
