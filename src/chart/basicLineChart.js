@@ -52,6 +52,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 			return (Math.round(parent.y(val === undefined ? null : val) + 0.5) - 0.5);
 		});
 
+	var colorArray;
 	var colors = d3.scale.ordinal()
 		.range(colorbrewer.Set3[12]);
 
@@ -107,18 +108,19 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 	/**
 	 * Get or set a range of colors to display. The order of the the data passed to the {@link load()}
 	 * function will determine the color used from the configured {@code colorArray}.
-	 * 
-	 * @param {Array} colorArray An array of valid SVG color values to set.
+	 *
+	 * @param {Array} array An array of valid SVG color values to set.
 	 * @return when used as a getter, the current color array, otherwise this object
 	 * @memberOf sn.chart.basicLineChart
 	 * @preserve
 	 */
-	self.colors = function(colorArray) {
+	self.colors = function(array) {
 		if ( !arguments.length ) return colors.range();
-		colors.range(colorArray);
+		colorArray = array;
+		colors.range(array);
 		return self;
 	};
-	
+
 	/**
 	 * Get the d3 ordinal color scale.
 	 *
@@ -190,10 +192,13 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		});
 		
 		// setup colors
-		colors.domain(lineIds.length)
-			.range(colorbrewer.Set3[lineIds.length < 3 ? 3 : lineIds.length > 11 ? 12 : lineIds.length]);
-		
-		// setup X domain		
+		colors.domain(lineIds.length);
+		if ( !(colorArray && colorArray.length > 0) ) {
+			// set an automatic color range based on the number of lines
+			colors.range(colorbrewer.Set3[lineIds.length < 3 ? 3 : lineIds.length > 11 ? 12 : lineIds.length]);
+		}
+
+		// setup X domain
 		parent.x.domain(rangeX);
 		
 		// setup Y domain
