@@ -15,7 +15,7 @@ import "baseTimeChart";
 
 /**
  * A basic line chart without groupings.
- * 
+ *
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.basicLineChartParameters} [chartConfig] - the chart parameters
@@ -31,15 +31,15 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		return me;
 	}());
 	parent.me = self;
-	
+
 	// properties
 	var sourceExcludeCallback;
-	
+
 	var originalData = {}, // line ID -> raw data array
 		lineIds = [], // ordered array of line IDs
 		linePlotProperties = {}, // line ID -> plot property name
 		lineDrawData = [];
-		
+
 	var linePathGenerator = d3.svg.line()
 		.interpolate('monotone')
 		.x(function(d) {
@@ -57,10 +57,10 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		.range(colorbrewer.Set3[12]);
 
 	/**
-	 * Add data for a single line in the chart. The data is appended if data has 
-	 * already been loaded for the given line ID. This does not redraw the chart. 
+	 * Add data for a single line in the chart. The data is appended if data has
+	 * already been loaded for the given line ID. This does not redraw the chart.
 	 * Once all line data has been loaded, call {@link #regenerate()} to draw.
-	 * 
+	 *
 	 * @param {Array} rawData - The raw chart data to load.
 	 * @param {String} lineId - The ID to associate with the data; each line must have its own ID
 	 * @param {String} plotProperty - A property of the raw data to plot for the line. If not specified,
@@ -84,12 +84,12 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		}
 		return self;
 	};
-	
+
 	/**
-	 * Get or set the source exclude callback function. The callback will be passed the line ID 
+	 * Get or set the source exclude callback function. The callback will be passed the line ID
 	 * as an argument. It should true <em>true</em> if the data set for the given argument
 	 * should be excluded from the chart.
-	 * 
+	 *
 	 * @param {function} [value] the source exclude callback
 	 * @return when used as a getter, the current source exclude callback function, otherwise this object
 	 * @memberOf sn.chart.basicLineChart
@@ -131,11 +131,11 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 	self.colorScale = function() {
 		return colors;
 	};
-	
+
 	self.data = function(lineId) {
 		return originalData[lineId];
 	};
-	
+
 	self.reset = function() {
 		parent.reset();
 		originalData = {};
@@ -149,16 +149,16 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		var plotPropName = parent.plotPropertyName,
 			rangeX = [null, null],
 			rangeY = [null, null];
-		
+
 		lineDrawData = [];
 
 		lineIds.forEach(function(lineId) {
 			var rawLineData = self.data(lineId);
-				
-			if ( rawLineData ) {			
+
+			if ( rawLineData ) {
 				rawLineData.forEach(function(d) {
 					var y;
-					
+
 					// set up date for X axis
 					if ( d.date === undefined ) {
 						// automatically create Date
@@ -173,7 +173,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 						if ( rangeX[1] === null || d.date > rangeX[1] ) {
 							rangeX[1] = d.date;
 						}
-					
+
 						// adjust Y axis range
 						y = d[linePlotProperties[lineId] ? linePlotProperties[lineId] : plotPropName];
 						if ( y !== undefined ) {
@@ -187,10 +187,10 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 					}
 				});
 			}
-			
+
 			lineDrawData.push(rawLineData);
 		});
-		
+
 		// setup colors
 		colors.domain(lineIds.length);
 		if ( !(colorArray && colorArray.length > 0) ) {
@@ -200,58 +200,58 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 
 		// setup X domain
 		parent.x.domain(rangeX);
-		
+
 		// setup Y domain
 		parent.y.domain(rangeY).nice();
-		
+
 		parent.computeUnitsY();
 	}
-	
+
 	// return a class attribute value of the line ID, to support drawing in the line generator
 	function lineClass(d, i) {
 		!d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
 		return lineIds[i];
 	}
-	
+
 	function lineStroke(d, i) {
 		!d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
 		return colors(i);
 	}
-	
+
 	function lineOpacity(d, i) {
 		!d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
 		var hidden = (sourceExcludeCallback ? sourceExcludeCallback.call(this, lineIds[i]) : false);
 		return (hidden ? 1e-6 : 1);
 	}
-	
+
 	function lineCommonProperties(selection) {
 		selection
 				.style('opacity', lineOpacity)
 				.attr('stroke', lineStroke)
 				.attr('d', linePathGenerator);
 	}
-	
+
 	function draw() {
 		var transitionMs = parent.transitionMs(),
 			lines;
-		
+
 		lines = parent.svgDataRoot.selectAll('path').data(lineDrawData, function(d, i) {
 			!d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
 			return lineIds[i];
 		});
-		
+
 		lines.attr('class', lineClass)
 			.transition().duration(transitionMs)
 				.call(lineCommonProperties);
-		
+
 		lines.enter().append('path')
 				.attr('class', lineClass)
 				.call(lineCommonProperties);
-		
+
 		lines.exit().transition().duration(transitionMs)
 			.style('opacity', 1e-6)
 			.remove();
-		
+
 		superDraw();
 		// TODo: drawAxisXRules();
 	}
@@ -259,19 +259,19 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 	function axisXVertRule(d) {
 		return (Math.round(parent.x(d) + 0.5) - 0.5);
 	}
-	
+
 	function drawAxisXRules(vertRuleTicks) {
 		var transitionMs = parent.transitionMs(),
 			axisLines,
 			labelTicks;
-			
+
 		labelTicks = trimToXDomain(vertRuleTicks);
 		axisLines = svgVertRuleGroup.selectAll("line").data(labelTicks, keyX),
-		
+
 		axisLines.transition().duration(transitionMs)
 	  		.attr("x1", valueXVertRule)
 	  		.attr("x2", valueXVertRule);
-		
+
 		axisLines.enter().append("line")
 			.style("opacity", 1e-6)
 			.attr("x1", valueXVertRule)
@@ -284,16 +284,16 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 				// remove the opacity style
 				d3.select(this).style("opacity", null);
 			});
-		
+
 		axisLines.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
 	}
 	*/
-	
+
 	// wire up implementations
 	parent.setup = setup;
 	parent.draw = draw;
-	
+
 	return self;
 };
