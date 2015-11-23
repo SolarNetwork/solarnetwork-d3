@@ -8,18 +8,18 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	var self = {
 		version : '1.0.0'
 	};
-	
+
 	var me = self;
-	
+
 	var internalPropName = '__internal__';
-	var aggregates = ['FiveMinute', 'TenMinute','FifteenMinute','Hour', 'HourOfDay', 'SeasonalHourOfDay', 
+	var aggregates = ['FiveMinute', 'TenMinute','FifteenMinute','Hour', 'HourOfDay', 'SeasonalHourOfDay',
 			'Day', 'DayOfWeek', 'SeasonalDayOfWeek', 'Month'];
 
 	var config = (chartConfig || new sn.Configuration());
-	
+
 	// default to container's width, if we can
 	var containerWidth = sn.ui.pixelWidth(containerSelector);
-	
+
 	var p = (config.padding || [10, 0, 20, 30]),
 		w = (config.width || containerWidth || 812) - p[1] - p[3],
 		h = (config.height || 300) - p[0] - p[2],
@@ -28,14 +28,14 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 
 	// String, one of supported SolarNet aggregate types: Month, Day, Hour, or Minute
 	var aggregateType;
-	
+
 	// mapping of aggregateType keys to associated data property names, e.g. 'watts' or 'wattHours'
 	var plotProperties;
-	
+
 	var transitionMs; // will default to 600
 	var ruleOpacity; // will default to 0.1
 	var vertRuleOpacity; // will default to 0.05
-	
+
 	var svgRoot,
 		svgTickGroupX,
 		svgDataRoot,
@@ -43,7 +43,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		svgAnnotRoot,
 		svgHoverRoot,
 		svgPointerCapture;
-	
+
 	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
 	var drawAnnotationsCallback = undefined; // function accepts (svgAnnotRoot)
 	var xAxisTickCallback = undefined; // function accepts (d, i, x, numTicks)
@@ -63,55 +63,55 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		return counts;
 	}());
 	var lastUserInteractionInfo = { time : 0 };
-	
+
 	// display units in kW if domain range > 1000
 	var displayFactor = 1;
 	var displayFormatter = d3.format(',d');
 
 	var xAxisTickCount = 12;
 	var yAxisTickCount = 5;
-	
-	var draw = function() {	
+
+	var draw = function() {
 		// extending classes should do something here...
 		drawAxisX();
 		drawAxisY();
 	};
-	
+
 	var handleHoverEnter = function() {
 		if ( !hoverEnterCallback ) {
 			return;
 		}
         hoverEnterCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
-	
+
 	var handleHoverMove = function() {
 		if ( !hoverMoveCallback ) {
 			return;
 		}
         hoverMoveCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
-	
+
 	var handleHoverLeave = function() {
 		if ( !hoverLeaveCallback ) {
 			return;
 		}
         hoverLeaveCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
-	
+
 	var handleClick = function() {
 		if ( !clickCallback ) {
 			return;
 		}
         clickCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
-	
+
 	var handleDoubleClick = function() {
 		if ( !doubleClickCallback ) {
 			return;
 		}
         doubleClickCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
-	
+
 	function registerUserInteractionHandler(tapEventName, container, handler) {
 		var eventName = sn.tapEventNames[tapEventName];
 		if ( !eventName ) {
@@ -122,7 +122,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		userInteractionHandlerCount[eventName] += 1;
 	}
-	
+
 	function unregisterUserInteractionHandler(tapEventName, container, handler) {
 		var eventName = sn.tapEventNames[tapEventName];
 		if ( !eventName ) {
@@ -133,7 +133,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 			container.on(eventName, null);
 		}
 	}
-		
+
 	function handleClickInternal() {
 		var event = d3.event,
 			time = new Date().getTime(),
@@ -163,7 +163,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 			handleClick.call(that);
 		}
 	}
-	
+
 	function parseConfiguration() {
 		self.aggregate(config.aggregate);
 		self.plotProperties(config.value('plotProperties'));
@@ -188,7 +188,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	svgDataRoot = svgRoot.append('g')
 		.attr('class', 'data-root')
 		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
-		
+
 	svgTickGroupX = svgRoot.append('g')
 		.attr('class', 'ticks')
 		.attr('transform', 'translate(' + p[3] +',' +(h + p[0] + p[2]) +')');
@@ -200,7 +200,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	svgRuleRoot = svgRoot.append('g')
 		.attr('class', 'rule')
 		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
-		
+
 	svgAnnotRoot = svgRoot.append('g')
 		.attr('class', 'annot-root')
 		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
@@ -209,7 +209,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		var fmt;
 		var maxY = d3.max(y.domain(), function(v) { return Math.abs(v); });
 		displayFactor = 1;
-		
+
 		if ( displayFactorCallback ) {
 			displayFactor = displayFactorCallback.call(me, maxY);
 		} else if ( maxY >= 1000000000 ) {
@@ -225,14 +225,14 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		} else {
 			fmt = ',g';
 		}
-		
+
 		displayFormatter = d3.format(fmt);
 	}
-	
+
 	function displayFormat(d) {
 		return displayFormatter(d / displayFactor);
 	}
-	
+
 	function plotPropertyName() {
 		return plotProperties[aggregateType];
 	}
@@ -243,13 +243,13 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 
 	function setup() {
 		// extending classes should do something here...
-				
+
 		computeUnitsY();
 	}
-	
+
 	function axisYTransform(d) {
 		// align to half-pixels, to 1px line is aligned to pixels and crisp
-		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")"; 
+		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")";
 	}
 
 	function axisRuleClassY(d) {
@@ -266,11 +266,11 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 			|| (aggregateType === 'Day' && d.getUTCDate() === 1)
 			|| (aggregateType === 'Month' && d.getUTCMonth() === 0);
 	}
-	
+
 	function xAxisTicks() {
 		return x.ticks(xAxisTickCount);
 	}
-	
+
 	function xAxisTickFormatter() {
 		var fxDefault = x.tickFormat(xAxisTickCount);
 		return function(d, i) {
@@ -294,11 +294,11 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 				.classed({
 						major : axisXTickClassMajor
 					});
-		
+
 		labels.transition().duration(transitionMs)
 				.attr('x', x)
 				.text(fx);
-		
+
 		labels.enter().append('text')
 				.attr('dy', '-0.5em') // needed so descenders not cut off
 				.style('opacity', 1e-6)
@@ -317,26 +317,26 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 			.style('opacity', 1e-6)
 			.remove();
 	}
-	
+
 	function yAxisTicks() {
 		return y.ticks(yAxisTickCount);
 	}
-	
+
 	function drawAxisY() {
 		var yTicks = yAxisTicks();
 		var axisLines = svgRoot.select('g.rule').selectAll('g').data(yTicks, Object);
 		var axisLinesT = axisLines.transition().duration(transitionMs);
-		
+
 		axisLinesT.attr('transform', axisYTransform).select('text')
 				.text(displayFormat)
 				.attr('class', axisTextClassY);
 		axisLinesT.select('line')
 				.attr('class', axisRuleClassY);
-		
+
 	  	axisLines.exit().transition().duration(transitionMs)
 	  			.style('opacity', 1e-6)
 	  			.remove();
-	  			
+
 		var entered = axisLines.enter()
 				.append('g')
 				.style('opacity', 1e-6)
@@ -359,7 +359,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 
 	/**
 	 * Scale a date for the x-axis.
-	 * 
+	 *
 	 * @param {Date} the Date to scale
 	 * @return {Number} the scaled value
 	 * @memberOf sn.chart.baseTimeChart
@@ -369,17 +369,17 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 
 	/**
 	 * Scale a value for the y-axis.
-	 * 
+	 *
 	 * @param {Number} the value to scale
 	 * @return {Number} the scaled value
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
 	 */
 	self.scaleValue = function(value) { return y(value); };
-	
+
 	/**
 	 * Get the x-axis domain (minimum and maximum dates).
-	 * 
+	 *
 	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -388,19 +388,19 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 
 	/**
 	 * Get the y-axis domain (minimum and maximum values).
-	 * 
+	 *
 	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
 	 */
 	self.yDomain = function() { return y.domain(); };
-	
+
 	/**
 	 * Get the scaling factor the y-axis is using. By default this will return {@code 1}.
 	 * After calling the {@link #load()} method, however, the chart may decide to scale
 	 * the y-axis for clarity. You can call this method to find out the scaling factor the
 	 * chart ended up using.
-	 *  
+	 *
 	 * @return the y-axis scale factor
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -409,23 +409,23 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 
 	/**
 	 * Get the current {@code aggregate} value in use.
-	 * 
+	 *
 	 * @param {number} [value] the number of consumption sources to use
 	 * @returns when used as a getter, the count number, otherwise this object
 	 * @returns the {@code aggregate} value
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
 	 */
-	self.aggregate = function(value) { 
+	self.aggregate = function(value) {
 		if ( !arguments.length ) return aggregateType;
 		var idx = aggregates.indexOf(value);
 		aggregateType = (idx < 0 ? 'Hour' : value);
 		return me;
 	};
-	
+
 	/**
 	 * Get the expected normalized duration, in milliseconds, based on the configured aggregate level.
-	 * 
+	 *
 	 * @returns The expected normalized millisecond duration for the configured aggregate level.
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -451,7 +451,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return (1000 * 60); // otherwise, default to minute duration
 	};
-	
+
 	/**
 	 * Test if two dates are the expected aggregate normalized duration apart.
 	 *
@@ -460,7 +460,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * @preserve
 	 */
 	self.isNormalizedDuration = function(d1, d2) {
-		var diff, 
+		var diff,
 			expectedDiff = self.aggregateNormalizedDuration(),
 			v1;
 		if ( !(d1 && d2) ) {
@@ -470,19 +470,19 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		if ( diff === expectedDiff ) {
 			return true;
 		}
-		
+
 		// make sure d1 < d2
 		if ( d2.getTime() < d1.getTime() ) {
 				v1 = d1;
 				d1 = d2;
 				d2 = v1;
 		}
-		
+
 		if ( aggregateType === 'Month' ) {
 			// test if months are only 1 apart
 			return (d3.time.month.utc.offset(d1, 1).getTime() === d2.getTime());
 		}
-		
+
 		if ( aggregateType === 'SeasonalHourOfDay' ) {
 			// test just if hour only 1 apart
 			v1 = d1.getUTCHours() + 1;
@@ -491,7 +491,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 			}
 			return (d2.getUTCHours() === v1 && d1.getTime() !== d2.getTime());
 		}
-		
+
 		if ( aggregateType === 'SeasonalDayOfWeek' ) {
 			// test just if DOW only 1 apart
 			v1 = d1.getUTCDay() + 1;
@@ -500,10 +500,10 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 			}
 			return (d2.getUTCDay() === v1 && d1.getTime() !== d2.getTime());
 		}
-		
+
 		return false;
 	};
-	
+
 	/**
 	 * Add an aggregate normalized time duration to a given date.
 	 *
@@ -521,11 +521,11 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return new Date(date.getTime() + self.aggregateNormalizedDuration());
 	};
-	
+
 	/**
-	 * Clear out all data associated with this chart. Does not redraw. If 
+	 * Clear out all data associated with this chart. Does not redraw. If
 	 * {@link hoverLeaveCallback} is defined, it will be called with no arguments.
-	 * 
+	 *
 	 * @return this object
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -536,10 +536,10 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Regenerate the chart, using the current data.
-	 * 
+	 *
 	 * @returns this object
 	 * @memberOf sn.chart.baseTimeChart
 	 * @preserve
@@ -553,10 +553,10 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set the animation transition time, in milliseconds.
-	 * 
+	 *
 	 * @param {number} [value] the number of milliseconds to use
 	 * @return when used as a getter, the millisecond value, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -570,9 +570,9 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 
 	/**
 	 * Get or set the plot property names for all supported aggregate levels.
-	 * 
+	 *
 	 * When used as a setter, an Object with properties of the following names are supported:
-	 * 
+	 *
 	 * <ul>
 	 *   <li>FiveMinute</li>
 	 *   <li>TenMinute</li>
@@ -585,10 +585,10 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 *   <li>SeasonalDayOfWeek</li>
 	 *   <li>Month</li>
 	 * </ul>
-	 * 
+	 *
 	 * Each value should be the string name of the datum property to plot on the y-axis of the chart.
 	 * If an aggregate level is not defined, it will default to {@code watts}.
-	 * 
+	 *
 	 * @param {object} [value] the aggregate property names to use
 	 * @return when used as a getter, the current plot property value mapping object, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -605,10 +605,10 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	};
 
 	/**
-	 * Get or set the display factor callback function. The callback will be passed the absolute maximum 
+	 * Get or set the display factor callback function. The callback will be passed the absolute maximum
 	 * Y domain value as an argument. It should return a number representing the scale factor to use
 	 * in Y-axis labels.
-	 * 
+	 *
 	 * @param {function} [value] the display factor exclude callback
 	 * @return when used as a getter, the current display factor callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -628,7 +628,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * Get or set the draw annotations callback function, which is called after the chart completes drawing.
 	 * The function will be passed a SVG <code>&lt;g class="annot-root"&gt;</code> element that
 	 * represents the drawing area for the chart data.
-	 * 
+	 *
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current draw callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -643,7 +643,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	function getOrCreateHoverRoot() {
 		if ( !svgHoverRoot ) {
 			svgHoverRoot = svgRoot.append('g')
@@ -659,11 +659,11 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return svgPointerCapture;
 	}
-	
+
 	/**
 	 * Get or set a mouseover callback function, which is called in response to mouse entering
 	 * the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse enter callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -681,11 +681,11 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set a mousemove callback function, which is called in response to mouse movement
 	 * over the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the hover callback
 	 * @return when used as a getter, the current hover callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -704,11 +704,11 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set a mouseout callback function, which is called in response to mouse leaving
 	 * the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse leave callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -726,11 +726,11 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set a dblclick callback function, which is called in response to mouse double click
 	 * events on the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the double click callback
 	 * @return when used as a getter, the current double click callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -748,11 +748,11 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set a range selection callback function, which is called in response to mouse click or touch start
 	 * events on the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the range selection callback
 	 * @return when used as a getter, the current range selection callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -770,12 +770,12 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set the x-axis tick callback function, which is called during x-axis rendering.
-	 * The function will be passed a data object, the index, the d3 scale, and the number of 
+	 * The function will be passed a data object, the index, the d3 scale, and the number of
 	 * ticks requested. The <code>this</code> object will be set to the chart instance.
-	 * 
+	 *
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current x-axis tick callback function, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -792,7 +792,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	/**
 	 * Get or set the axis rule opacity value, which is used during axis rendering.
 	 * Defaults to <b>0.1</b>.
-	 * 
+	 *
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current axis rule opacity value, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -807,7 +807,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	/**
 	 * Get or set the vertical axis rule opacity value, which is used during axis rendering.
 	 * Defaults to <b>0.05</b>.
-	 * 
+	 *
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current vertical axis rule opacity value, otherwise this object
 	 * @memberOf sn.chart.baseTimeChart
@@ -840,7 +840,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		svgDataRoot : { value : svgDataRoot },
 		svgRuleRoot : { value : svgRuleRoot },
 		svgTickGroupX : { value : svgTickGroupX },
-		
+
 		// interactive support
 		svgHoverRoot : { get : function() { return svgHoverRoot; } },
 		handleHoverEnter : { get : function() { return handleHoverEnter; }, set : function(v) { handleHoverEnter = v; } },
