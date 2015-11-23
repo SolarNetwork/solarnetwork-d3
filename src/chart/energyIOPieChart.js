@@ -22,11 +22,11 @@ import "../ui/pixelWidth";
 /**
  * A power input and output chart designed to show consumption and generation data as an overall
  * percentage.
- * 
+ *
  * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
  * in the chart. After changing the configuration call {@link sn.chart.energyIOPieChart#regenerate()}
  * to re-draw the chart.
- * 
+ *
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.energyIOPieChartParameters} [chartConfig] - the chart parameters
@@ -40,28 +40,28 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var me = self;
 	var sources = [];
 	var config = (chartConfig || new sn.Configuration());
-	
+
 	// default to container's width, if we can
 	var containerWidth = sn.ui.pixelWidth(containerSelector);
-	
+
 	var p = (config.padding || [24, 24, 24, 24]),
 		w = (config.width || containerWidth || 300) - p[1] - p[3],
 		h = (config.height || 300) - p[0] - p[2],
 		r = d3.min([w, h]) / 2;
 
 	var transitionMs = undefined;
-	
+
 	var plotProperty = 'wattHours';
-	
+
 	var chartData = undefined,
 		chartLabels = undefined;
 
 	var svgRoot,
 		svgHoverRoot;
-		
+
 	// a numeric scale factor, by groupId
 	var scaleFactors = {};
-	
+
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
 	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
 	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
@@ -72,7 +72,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		hoverMoveCallback = undefined,
 		hoverLeaveCallback = undefined,
 		clickCallback = undefined;
-	
+
 	var percentFormatter = d3.format('.0%');
 
 	var originalData = {};
@@ -81,7 +81,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var totalValue = 0;
 	var innerRadius = 0;
 	var arc = d3.svg.arc();
-	
+
 	var handleHoverEnter = function() {
 		if ( !hoverEnterCallback ) {
 			return;
@@ -89,13 +89,13 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		var slice = d3.select(this),
  			point = d3.mouse(this),
 			callbackData = calculateHoverData(slice, point);
-			
+
 		slice.transition().duration(transitionMs)
 			.attr('transform', hoverHighlightFn);
-			
+
         hoverEnterCallback.call(me, this, point, callbackData);
 	};
-	
+
 	var handleHoverMove = function() {
 		if ( !hoverMoveCallback ) {
 			return;
@@ -105,7 +105,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			callbackData = calculateHoverData(slice, point);
         hoverMoveCallback.call(me, this, point, callbackData);
 	};
-	
+
 	var handleHoverLeave = function() {
 		if ( !hoverLeaveCallback ) {
 			return;
@@ -122,7 +122,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 
        hoverLeaveCallback.call(me, this, point, callbackData);
 	};
-	
+
 	var handleClick = function() {
 		if ( !clickCallback ) {
 			return;
@@ -132,11 +132,11 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			callbackData = calculateHoverData(slice, point);
 		clickCallback.call(me, this, point, callbackData);
 	};
-	
+
 	function hoverHighlightFn(d) {
 		return 'scale(1.05) ' + halfWayAngleTransform(d, 4);
 	}
-	
+
 	function getOrCreateHoverRoot() {
 		if ( !svgHoverRoot ) {
 			svgHoverRoot = svgRoot.append('g')
@@ -145,7 +145,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return svgHoverRoot;
 	}
-	
+
 	function calculateHoverData(slice) {
 		var d = slice.data()[0],
 			a = halfAngle(d),
@@ -175,7 +175,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	function sortSliceKeys(d1, d2) {
 		return d1.key.localeCompare(d2.key);
 	}
-	
+
 	function parseConfiguration() {
 		transitionMs = (config.value('transitionMs') || 600);
 		innerRadius = (config.value('innerRadius') || 0);
@@ -185,20 +185,24 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 
 	parseConfiguration();
 
-	svgRoot = d3.select(containerSelector).select('svg');
-	if ( svgRoot.empty() ) {
-		svgRoot = d3.select(containerSelector).append('svg:svg')
-			.attr('class', 'chart')
-			.attr("width", w + p[1] + p[3])
-			.attr("height", h + p[0] + p[2]);
-	} else {
-		svgRoot.selectAll('*').remove();
-	}
+	// if the passed in container *is* a svg element already, just use that directly
+    svgRoot = d3.select(containerSelector);
+    if ( svgRoot.node() && svgRoot.node().tagName.toLowerCase() !== 'svg' ) {
+		svgRoot = svgRoot.select('svg');
+		if ( svgRoot.empty() ) {
+			svgRoot = d3.select(containerSelector).append('svg:svg')
+				.attr('class', 'chart')
+				.attr("width", w + p[1] + p[3])
+				.attr("height", h + p[0] + p[2]);
+		} else {
+			svgRoot.selectAll('*').remove();
+		}
+    }
 
 	chartData = svgRoot.append("g")
 		.attr('class', 'data')
 		.attr("transform", "translate(" + ((w + p[1] + p[3]) / 2) + "," + ((h + p[0] + p[2]) / 2) + ")");
-	
+
 	chartLabels = svgRoot.append("g")
 		.attr('class', 'label')
 		.attr("transform", "translate(" + ((w + p[1] + p[3]) / 2) + "," + ((h + p[0] + p[2]) / 2) + ")");
@@ -206,16 +210,16 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	// setup display units in kW if domain range > 1000
 	var displayFactor = 1;
 	var displayFormatter = d3.format(',d');
-	
+
 	function sliceValue(d) {
 		return d.value;
 	}
-	
+
 	function computeUnits() {
 		var fmt;
 		var maxValue = d3.max(pieSlices, sliceValue);
 		displayFactor = 1;
-		
+
 		if ( displayFactorCallback ) {
 			displayFactor = displayFactorCallback.call(self, maxValue);
 		} else if ( maxValue >= 1000000000 ) {
@@ -237,17 +241,17 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 
 		displayFormatter = d3.format(fmt);
-		
+
 		totalValue = d3.sum(pieSlices, sliceValue);
 	}
-	
+
 	function setup() {
 		var combinedRollup = [];
-		
+
 		groupIds.forEach(function(groupId) {
 			var keyFn = function(d, i) {
-				return (layerKeyCallback 
-					? layerKeyCallback.call(self, groupId, d, i) 
+				return (layerKeyCallback
+					? layerKeyCallback.call(self, groupId, d, i)
 					: (groupId + '-' +d.sourceId).replace(/\W/, '-'));
 			};
 			var rollup = d3.nest()
@@ -267,32 +271,32 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 					return result;
 				})
 				.entries(originalData[groupId]);
-		
+
 			// remove excluded sources...
 			if ( sourceExcludeCallback ) {
 				rollup = rollup.filter(function(e) {
 					return !sourceExcludeCallback.call(self, groupId, e.key);
 				});
 			}
-			
+
 			combinedRollup = combinedRollup.concat(rollup.map(function(e) {
 				e.values.key = e.key; // add key to values, for sorting
-				return e.values; 
+				return e.values;
 			}));
 		});
-				
-		
+
+
 		var pie = d3.layout.pie()
 			.sort(layerKeySort)
 			.value(function(d) {
 				return d.sum;
 			});
-		
+
 		pieSlices = pie(combinedRollup);
-		
+
 		computeUnits();
 	}
-	
+
 	function pieSliceColorFn(d, i) {
 		if ( colorCallback ) {
 			return colorCallback.call(self, d.data.groupId, d.data.sourceId, i);
@@ -300,11 +304,11 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		var colors = d3.scale.category10().range();
 		return colors[i % colors.length];
 	}
-	
+
 	function clearOpacity() {
 		d3.select(this).style("opacity", null);
 	}
-	
+
 	function arcTween(d) {
 		var iStart = d3.interpolate(this._data_start.startAngle, d.startAngle);
 		var iEnd = d3.interpolate(this._data_start.endAngle, d.endAngle);
@@ -314,15 +318,15 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			return arc(td);
 		};
 	}
-	
+
 	function pieSliceKey(d) {
 		return d.data.key;
 	}
 
-	function draw() {	
+	function draw() {
 		// draw data areas
 		var pie = chartData.selectAll('path').data(pieSlices, pieSliceKey);
-		
+
 		pie.transition().duration(transitionMs)
 			.attr('d', arc)
 			.style('fill', pieSliceColorFn)
@@ -348,18 +352,18 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		pie.exit().transition().duration(transitionMs)
 			.style('opacity', 1e-6)
 			.remove();
-		
+
 		redrawLabels();
 	}
-	
+
 	function halfAngle(d) {
 		return (d.startAngle + (d.endAngle - d.startAngle) / 2);
 	}
-	
+
 	function halfAngleForLabel(d) {
 		return halfAngle(d) - Math.PI / 2;
 	}
-	
+
 	function halfWayAngleTransformTween(d, r) {
 		var i = d3.interpolate(halfAngle(this._data_start), halfAngle(d));
 		this._data_start = d;
@@ -368,22 +372,22 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			return "translate(" + (Math.cos(a) * r) + "," +(Math.sin(a) * r) +")";
 		};
 	}
-	
+
 	function halfWayAngleTransform(d, r) {
 		var a = halfAngleForLabel(d);
 		return "translate(" + (Math.cos(a) * r) + "," +(Math.sin(a) * r) +")";
 	}
-	
+
 	// format the data's actual value
 	function outerText(d) {
 		return displayFormatter(d.value / displayFactor);
 	}
-	
+
 	// format the data's value as a percentage of the overall pie value
 	function innerText(d) {
 		return percentFormatter(d.value / totalValue);
 	}
-	
+
 	function outerTextAnchor(d) {
 		var a = halfAngle(d);
 		if ( a < Math.PI * 2 * (1/8) || a > Math.PI * 2 * (7/8) ) {
@@ -395,7 +399,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return 'end';
 	}
-	
+
 	function outerTextDY(d) {
 		var a = halfAngle(d);
 		if ( a >= Math.PI * 2 * (3/8) && a < Math.PI * 2 * (5/8) ) {
@@ -403,28 +407,28 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return 0;
 	}
-	
+
 	function innerLabelMinValue() {
 		var m = Number(config.value('percentageLabelMinimumPercent'));
 		return (isNaN(m) ? 5 : m) / 100 * totalValue;
 	}
-	
+
 	function outerLabelMinValue() {
 		var m = Number(config.value('valueLabelMinimumPercent'));
 		return (isNaN(m) ? 5 : m) / 100 * totalValue;
 	}
-	
+
 	function redrawLabels() {
-		/* TODO: the idea for drawing lines would be if the pie slice is too small to 
+		/* TODO: the idea for drawing lines would be if the pie slice is too small to
 		 * show a value inside. We'd draw a line out from the slice, using the same
 		 * color as the slice.
 
 		// draw data labels
 		var lines = chartLabels.selectAll("line").data(pieSlices, pieSliceKey);
-		
+
 		lines.transition().duration(transitionMs)
 			.attr('transform', halfWayRotation);
-		
+
 		// we'll draw vertical lines, and then rotate them to match the half way angle
 		// between the start/end angles defined on our data elements
 		lines.enter().append("line")
@@ -436,27 +440,27 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		.transition().duration(transitionMs)
 			.style("opacity", 1)
 			.each("end", clearOpacity);
-		
+
 		lines.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
 		*/
-		
+
 		// show outer labels of actual values
 		var outerMinValue = outerLabelMinValue();
-		var outerLabelData = (config.enabled('hideValues') 
+		var outerLabelData = (config.enabled('hideValues')
 			? []
 			: pieSlices.filter(function(e) { return e.value > outerMinValue; }));
-		
+
 		var outerLabels = chartLabels.selectAll("text.outer").data(outerLabelData, pieSliceKey);
-			
+
 		outerLabels.transition().duration(transitionMs)
 			.text(outerText)
 			.attr("text-anchor", outerTextAnchor)
 			.attr("dy", outerTextDY)
 			.attr("transform", function(d) { return halfWayAngleTransform(d, r + 15); })
 			.attrTween("transform", function(d) { return halfWayAngleTransformTween.call(this, d, r + 15); });
-		
+
 		outerLabels.enter().append("text")
 			.classed("outer", true)
 			.attr("transform", function(d) { return halfWayAngleTransform(d, r + 15); })
@@ -472,24 +476,24 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		outerLabels.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
-	
+
 		// TODO: remove lables if pie slice too small to hold text for it
-		
+
 		// inner labels, showing percentage
 		var innerMinValue = innerLabelMinValue();
-		var innerLabelData = (config.enabled('hidePercentages') 
+		var innerLabelData = (config.enabled('hidePercentages')
 			? []
 			: pieSlices.filter(function(e) { return e.value > innerMinValue; }));
 
 		var innerLabels = chartLabels.selectAll("text.inner").data(innerLabelData, pieSliceKey);
-		
+
 		var labelRadius = (r - innerRadius) / 2 + innerRadius;
-			
+
 		innerLabels.transition().duration(transitionMs)
 			.text(innerText)
 			.attr("transform", function(d) { return halfWayAngleTransform(d, labelRadius); })
 			.attrTween("transform", function(d) { return halfWayAngleTransformTween.call(this, d, labelRadius); });
-		
+
 		innerLabels.enter().append("text")
 			.classed("inner", true)
 			.attr("transform", function(d) { return halfWayAngleTransform(d, labelRadius); })
@@ -500,20 +504,20 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		.transition().duration(transitionMs)
 			.style("opacity", 1)
 			.each("end", clearOpacity);
-	
+
 		innerLabels.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
 	}
 
 	self.sources = sources;
-	
+
 	/**
 	 * Get the scaling factor the labels are using. By default this will return {@code 1}.
 	 * After calling the {@link #load()} method, however, the chart may decide to scale
 	 * the data for clarity. You can call this method to find out the scaling factor the
 	 * chart ended up using.
-	 *  
+	 *
 	 * @return the y-axis scale factor
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
@@ -521,15 +525,15 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 
 	/**
 	 * Get the sum total of all slices in the pie chart.
-	 *  
+	 *
 	 * @return the sum total energy value
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
 	self.totalValue = function() { return totalValue; };
-	
+
 	/**
 	 * Clear out all data associated with this chart. Does not redraw.
-	 * 
+	 *
 	 * @return this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
@@ -539,12 +543,12 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		pieSlices = undefined;
 		return me;
 	};
-	
+
 	/**
-	 * Add data for a single group in the chart. The data is appended if data has 
-	 * already been loaded for the given groupId. This does not redraw the chart. 
+	 * Add data for a single group in the chart. The data is appended if data has
+	 * already been loaded for the given groupId. This does not redraw the chart.
 	 * Once all groups have been loaded, call {@link #regenerate()} to redraw.
-	 * 
+	 *
 	 * @param {Array} rawData - the raw chart data to load
 	 * @param {String} groupId - a unique ID to associate with the data
 	 * @return this object
@@ -559,11 +563,11 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Regenerate the chart, using the current data. This can be called after disabling a
 	 * source, for example.
-	 * 
+	 *
 	 * @return this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
@@ -577,10 +581,10 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		draw();
 		return me;
 	};
-	
+
 	/**
 	 * Get or set the animation transition time, in milliseconds.
-	 * 
+	 *
 	 * @param {number} [value] the number of milliseconds to use
 	 * @return when used as a getter, the millisecond value, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
@@ -593,7 +597,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 
 	/**
 	 * Get or set the plot property names to display data for.
-	 * 
+	 *
 	 * @param {string} [value] The data property to plot in the chart.
 	 * @return When used as a getter, the current plot property name value, otherwise this object,
 	 * @memberOf sn.chart.energyIOPieChart
@@ -608,7 +612,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * Get or set the scale factor for specific group IDs. If called without any arguments,
 	 * all configured scale factors will be returned as an object, with group IDs as property
 	 * names with corresponding scale factor values. If called with a single Object argument
-	 * then set all scale factors using group IDs as object property names with corresponding 
+	 * then set all scale factors using group IDs as object property names with corresponding
 	 * number values for the scale factor.
 	 *
 	 * @param {String} groupId - The group ID of the scale factor to set.
@@ -627,7 +631,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 				v = scaleFactors[groupId];
 				return (v === undefined ? 1 : v);
 			}
-			
+
 			// for a single Object argument, reset all scaleFactors
 			scaleFactors = groupId;
 		} else if ( arguments.length == 2 ) {
@@ -635,10 +639,10 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set the color callback function. The callback will be passed a datum.
-	 * 
+	 *
 	 * @param {function} [value] the color callback
 	 * @return when used as a getter, the current color callback function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
@@ -652,12 +656,12 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
-	 * Get or set the display factor callback function. The callback will be passed the maximum 
+	 * Get or set the display factor callback function. The callback will be passed the maximum
 	 * pie slice value as an argument. It should return a number representing the scale factor to use
 	 * in labels.
-	 * 
+	 *
 	 * @param {function} [value] the display factor exclude callback
 	 * @return when used as a getter, the current display factor callback function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
@@ -673,10 +677,10 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	};
 
 	/**
-	 * Get or set the source exclude callback function. The callback will be passed the group ID 
+	 * Get or set the source exclude callback function. The callback will be passed the group ID
 	 * and a source ID as arguments. It should true <em>true</em> if the data set for the given
 	 * group ID and source ID should be excluded from the chart.
-	 * 
+	 *
 	 * @param {function} [value] the source exclude callback
 	 * @return when used as a getter, the current source exclude callback function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
@@ -694,7 +698,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	/**
 	 * Get or set the layer key callback function. The callback will be passed a group ID and datum and should
 	 * return the rollup key to use.
-	 * 
+	 *
 	 * @param {function} [value] the layer key callback
 	 * @return when used as a getter, the current layer key callback function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
@@ -710,7 +714,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	/**
 	 * Get or set the layer key sort function. The function will be passed two datum and should
 	 * return -1, 0, or 1 if they are in descending, equal, or ascending order.
-	 * 
+	 *
 	 * @param {function} [value] the layer sort callback
 	 * @return when used as a getter, the current layer key sort function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
@@ -726,7 +730,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	/**
 	 * Get or set a mouseover callback function, which is called in response to mouse entering
 	 * the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse enter callback function, otherwise this object
 	 * @memberOf sn.chart.baseGroupedChart
@@ -741,11 +745,11 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set a mousemove callback function, which is called in response to mouse movement
 	 * over the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the hover callback
 	 * @return when used as a getter, the current hover callback function, otherwise this object
 	 * @memberOf sn.chart.baseGroupedChart
@@ -761,11 +765,11 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set a mouseout callback function, which is called in response to mouse leaving
 	 * the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse leave callback function, otherwise this object
 	 * @memberOf sn.chart.baseGroupedChart
@@ -780,11 +784,11 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	/**
 	 * Get or set a mouseout click function, which is called in response to mouse click or touch start
 	 * events on the data area of the chart.
-	 * 
+	 *
 	 * @param {function} [value] the click callback
 	 * @return when used as a getter, the current click callback function, otherwise this object
 	 * @memberOf sn.chart.baseGroupedChart
@@ -798,6 +802,6 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 		return me;
 	};
-	
+
 	return self;
 };
