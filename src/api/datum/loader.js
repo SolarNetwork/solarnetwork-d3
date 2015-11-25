@@ -19,18 +19,29 @@ import "../../net/net";
  * @preserve
  */
 sn.api.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
-	
-	var that = { version : '1.0.0' };
+
+	var that = load;
+	that.version = '1.0.0';
 
 	var finishedCallback;
 	var urlParameters;
 
 	var state = 0; // keys are source IDs, values are 1:loading, 2:done
 	var results;
-	
+
+	function load(callback) {
+		// to support queue use, allow callback to be passed directly to this function
+		if ( typeof callback === 'function' ) {
+			finishedCallback = callback;
+		}
+		state = 1;
+		loadData();
+		return load;
+	}
+
 	function requestCompletionHandler(error) {
 		state = 2; // done
-		
+
 		// check if we're all done loading, and if so call our callback function
 		if ( finishedCallback ) {
 			finishedCallback.call(that, error, results);
@@ -140,15 +151,7 @@ sn.api.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	 * @memberOf sn.api.datum.loader
 	 * @preserve
 	 */
-	that.load = function(callback) {
-		// to support queue use, allow callback to be passed directly to this function
-		if ( typeof callback === 'function' ) {
-			finishedCallback = callback;
-		}
-		state = 1;
-		loadData();
-		return that;
-	};
+	that.load = load;
 
 	return that;
 };
