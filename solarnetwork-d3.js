@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue) {
   "use strict";
   var sn = {
-    version: "0.9.3"
+    version: "0.9.4"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -880,12 +880,12 @@
     }
   }
   /**
- * Load data for a set of source IDs, date range, and aggregate level using the 
- * {@code dateTimeListURL} endpoint. This object is designed 
+ * Load data for a set of source IDs, date range, and aggregate level using the
+ * {@code dateTimeListURL} endpoint. This object is designed
  * to be used once per query. After creating the object and configuring an asynchronous
  * callback function with {@link #callback(function)}, call {@link #load()} to start
  * loading the data. The callback function will be called once all data has been loaded.
- * 
+ *
  * @class
  * @param {string[]} sourceIds - array of source IDs to load data for
  * @param {function} urlHelper - a {@link sn.api.node.nodeUrlHelper} or {@link sn.api.loc.locationUrlHelper}
@@ -896,13 +896,20 @@
  * @preserve
  */
   sn.api.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
-    var that = {
-      version: "1.0.0"
-    };
+    var that = load;
+    that.version = "1.0.0";
     var finishedCallback;
     var urlParameters;
     var state = 0;
     var results;
+    function load(callback) {
+      if (typeof callback === "function") {
+        finishedCallback = callback;
+      }
+      state = 1;
+      loadData();
+      return load;
+    }
     function requestCompletionHandler(error) {
       state = 2;
       if (finishedCallback) {
@@ -960,7 +967,7 @@
     /**
 	 * Get or set the callback function, invoked after all data has been loaded. The callback
 	 * function will be passed two arguments: an error and the results.
-	 * 
+	 *
 	 * @param {function} [value] the callback function to use
 	 * @return when used as a getter, the current callback function, otherwise this object
 	 * @memberOf sn.api.datum.loader
@@ -978,7 +985,7 @@
     /**
 	 * Get or set additional URL parameters. The parameters are set as object properties.
 	 * If a property value is an array, multiple parameters for that property will be added.
-	 * 
+	 *
 	 * @param {object} [value] the URL parameters to include with the JSON request
 	 * @return when used as a getter, the URL parameters, otherwise this object
 	 * @memberOf sn.api.datum.loader
@@ -996,20 +1003,16 @@
 	 * the {@link #callback(value)} method, a callback function can be passed as an argument
 	 * to this function. This allows this function to be passed to <code>queue.defer</code>,
 	 * for example.
-	 * 
+	 *
+	 * This method is an alias for just invoking the loader function directly. That is,
+	 * <code>loader.load(...)</code> is equivalent to <code>loader(...)</code>.
+	 *
 	 * @param {function} [callback] a callback function to use
 	 * @return this object
 	 * @memberOf sn.api.datum.loader
 	 * @preserve
 	 */
-    that.load = function(callback) {
-      if (typeof callback === "function") {
-        finishedCallback = callback;
-      }
-      state = 1;
-      loadData();
-      return that;
-    };
+    that.load = load;
     return that;
   };
   sn.api.datum.loaderQueryRange = sn_api_datum_loaderQueryRange;
@@ -1095,27 +1098,20 @@
   /**
  * Load data from multiple {@link sn.api.datum.loader} objects, invoking a callback function
  * after all data has been loaded. Call {@link #load()} to start loading the data.
- * 
+ *
  * @class
  * @param {sn.api.datum.loader[]} loaders - array of {@link sn.api.datum.loader} objects
  * @returns {sn.api.datum.multiLoader}
  * @preserve
  */
   sn.api.datum.multiLoader = function(loaders) {
-    var that = {
-      version: "1.0.0"
-    };
+    var that = load;
+    that.version = "1.0.0";
     var finishedCallback, q = queue();
-    that.callback = function(value) {
-      if (!arguments.length) {
-        return finishedCallback;
+    function load(callback) {
+      if (typeof callback === "function") {
+        finishedCallback = callback;
       }
-      if (typeof value === "function") {
-        finishedCallback = value;
-      }
-      return that;
-    };
-    that.load = function() {
       loaders.forEach(function(e) {
         q.defer(e.load);
       });
@@ -1125,7 +1121,42 @@
         }
       });
       return that;
+    }
+    /**
+	 * Get or set the callback function, invoked after all data has been loaded. The callback
+	 * function will be passed two arguments: an error and an array of result arrays returned
+	 * from {@link sn.api.datum.loader#load()} on each supplied loader.
+	 *
+	 * @param {function} [value] the callback function to use
+	 * @return when used as a getter, the current callback function, otherwise this object
+	 * @memberOf sn.api.datum.multiLoader
+	 * @preserve
+	 */
+    that.callback = function(value) {
+      if (!arguments.length) {
+        return finishedCallback;
+      }
+      if (typeof value === "function") {
+        finishedCallback = value;
+      }
+      return that;
     };
+    /**
+	 * Initiate loading the data. This will call {@link sn.api.datum.loader#load()} on each
+	 * supplied loader, in parallel. As an alternative to configuring the callback function via
+	 * the {@link #callback(value)} method, a callback function can be passed as an argument
+	 * to this function. This allows this function to be passed to <code>queue.defer</code>,
+	 * for example.
+	 *
+	 * This method is an alias for just invoking the loader function directly. That is,
+	 * <code>multiLoader.load(...)</code> is equivalent to <code>multiLoader(...)</code>.
+	 *
+	 * @param {function} [callback] a callback function to use
+	 * @return this object
+	 * @memberOf sn.api.datum.multiLoader
+	 * @preserve
+	 */
+    that.load = load;
     return that;
   };
   sn.api.datum.nestedStackDataNormalizeByDate = sn_api_datum_nestedStackDataNormalizeByDate;
