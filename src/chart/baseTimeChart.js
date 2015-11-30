@@ -17,14 +17,11 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 
 	var config = (chartConfig || new sn.Configuration());
 
-	// default to container's width, if we can
-	var containerWidth = sn.ui.pixelWidth(containerSelector);
-
-	var p = (config.padding || [10, 0, 20, 30]),
-		w = (config.width || containerWidth || 812) - p[1] - p[3],
-		h = (config.height || 300) - p[0] - p[2],
-    	x = d3.time.scale.utc().range([0, w]),
-		y = d3.scale.linear().range([h, 0]);
+	var p, // padding
+		w, // width
+		h, // height
+    	x, // d3.time.scale
+		y; // d3.scale.linear
 
 	// String, one of supported SolarNet aggregate types: Month, Day, Hour, or Minute
 	var aggregateType;
@@ -164,7 +161,19 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		}
 	}
 
+	function parseDimensions() {
+		// default to container's width, if we can
+		var containerWidth = sn.ui.pixelWidth(containerSelector);
+
+		p = (config.padding || [10, 0, 20, 30]);
+		w = (config.width || containerWidth || 812) - p[1] - p[3];
+		h = (config.height || 300) - p[0] - p[2];
+    	x = d3.time.scale.utc().range([0, w]);
+		y = d3.scale.linear().range([h, 0]);
+	}
+
 	function parseConfiguration() {
+		parseDimensions();
 		self.aggregate(config.aggregate);
 		self.plotProperties(config.value('plotProperties'));
 		transitionMs = (config.value('transitionMs') || 600);
@@ -172,38 +181,40 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		vertRuleOpacity = (config.value('vertRuleOpacity') || 0.05);
 	}
 
-	// if the passed in container *is* a svg element already, just use that directly
-    svgRoot = d3.select(containerSelector);
-    if ( svgRoot.node() && svgRoot.node().tagName.toLowerCase() !== 'svg' ) {
-		svgRoot = svgRoot.select('svg');
-		if (svgRoot.empty()) {
-			svgRoot = d3.select(containerSelector).append('svg:svg');
+	function setupSVG() {
+		// if the passed in container *is* a svg element already, just use that directly
+		svgRoot = d3.select(containerSelector);
+		if ( svgRoot.node() && svgRoot.node().tagName.toLowerCase() !== 'svg' ) {
+			svgRoot = svgRoot.select('svg');
+			if (svgRoot.empty()) {
+				svgRoot = d3.select(containerSelector).append('svg:svg');
+			}
+			svgRoot.attr('class', 'chart')
+				.attr('width', w + p[1] + p[3])
+				.attr('height', h + p[0] + p[2])
+				.selectAll('*').remove();
 		}
-		svgRoot.attr('class', 'chart')
-			.attr('width', w + p[1] + p[3])
-			.attr('height', h + p[0] + p[2])
-			.selectAll('*').remove();
-    }
 
-	svgDataRoot = svgRoot.append('g')
-		.attr('class', 'data-root')
-		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+		svgDataRoot = svgRoot.append('g')
+			.attr('class', 'data-root')
+			.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
 
-	svgTickGroupX = svgRoot.append('g')
-		.attr('class', 'ticks')
-		.attr('transform', 'translate(' + p[3] +',' +(h + p[0] + p[2]) +')');
+		svgTickGroupX = svgRoot.append('g')
+			.attr('class', 'ticks')
+			.attr('transform', 'translate(' + p[3] +',' +(h + p[0] + p[2]) +')');
 
-	svgRoot.append('g')
-		.attr('class', 'crisp rule')
-		.attr('transform', 'translate(0,' + p[0] + ')');
+		svgRoot.append('g')
+			.attr('class', 'crisp rule')
+			.attr('transform', 'translate(0,' + p[0] + ')');
 
-	svgRuleRoot = svgRoot.append('g')
-		.attr('class', 'rule')
-		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+		svgRuleRoot = svgRoot.append('g')
+			.attr('class', 'rule')
+			.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
 
-	svgAnnotRoot = svgRoot.append('g')
-		.attr('class', 'annot-root')
-		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+		svgAnnotRoot = svgRoot.append('g')
+			.attr('class', 'annot-root')
+			.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+	}
 
 	function computeUnitsY() {
 		var fmt;
@@ -328,9 +339,12 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		var axisLinesT = axisLines.transition().duration(transitionMs);
 
 		axisLinesT.attr('transform', axisYTransform).select('text')
+				.attr('x', p[3] - 10)
 				.text(displayFormat)
 				.attr('class', axisTextClassY);
 		axisLinesT.select('line')
+				.attr('x2', w + p[3])
+				.attr('x1', p[3])
 				.attr('class', axisRuleClassY);
 
 	  	axisLines.exit().transition().duration(transitionMs)
@@ -819,6 +833,9 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		return me;
 	};
 
+	parseConfiguration();
+	setupSVG();
+
 	Object.defineProperties(self, {
 		// extending classes should re-define this property so method chaining works
 		me : { get : function() { return me; }, set : function(obj) { me = obj; } },
@@ -856,6 +873,5 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		draw : { get : function() { return draw; }, set : function(v) { draw = v; } },
 		setup : { get : function() { return setup; }, set : function(v) { setup = v; } }
 	});
-	parseConfiguration();
 	return self;
 };
