@@ -4,7 +4,7 @@ import "../format/seasons";
 
 /**
  * An abstract base chart supporting seasonal aggregate groups.
- * 
+ *
  * @class
  * @extends sn.chart.baseGroupedChart
  * @param {string} containerSelector - the selector for the element to insert the chart into
@@ -17,8 +17,8 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 		superDraw = sn.util.superMethod.call(parent, 'draw');
 	var self = sn.util.copyAll(parent, {version : '1.0.0'});
 	self.me = self;
-	
-	var timeKeyLabels = ['Midnight', 
+
+	var timeKeyLabels = ['Midnight',
 						'1am', '2am', '3am', '4am', '5am', '6am', '7am', '8am', '9am', '10am', '11am',
 						'Noon',
 						'1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm', '9pm', '10pm', '11pm'];
@@ -26,11 +26,11 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 	// change x scale to ordinal DOW, with a slight inset for first/last labels to fit more nicely
 	parent.x = d3.scale.ordinal()
 		.rangePoints([0, parent.width], 0.2);
-	
+
 	parent.xAxisTicks = function() {
 		return parent.x.domain();
 	}
-	
+
 	parent.xAxisTickFormatter = function() {
 		return function(d, i) {
 			if ( parent.xAxisTickCallback() ) {
@@ -40,7 +40,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 			}
 		};
 	}
-	
+
 	// Boolean, true for northern hemisphere seasons, false for southern.
 	var northernHemisphere;
 
@@ -54,7 +54,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 		.x(function(d) {
 			return (Math.round(parent.x(d.date) + 0.5) - 0.5);
 		})
-		.y(function(d) { 
+		.y(function(d) {
 			return (Math.round(parent.y(d.y) + 0.5) - 0.5);
 		});
 
@@ -64,33 +64,33 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 		var season = ((i + (northernHemisphere ? 0 : 2)) % 4);
 		return seasonColors[season];
 	}
-	
+
 	function dateForTimeKey(offset) {
 		return new Date(Date.UTC(2001, 0, 1) + offset);
 	}
-	
+
 	function timeKeyForDate(date) {
 		date.getTime();
 	}
-	
+
 	function timeKeyInterval() {
 		return d3.time.day.utc;
 	}
-		
+
 	/**
-	 * A rollup function for d3.dest(), that aggregates the plot property value and 
+	 * A rollup function for d3.dest(), that aggregates the plot property value and
 	 * returns objects in the form <code>{ date : Date(..), y : Number, plus : Number, minus : Number }</code>.
 	 */
 	function nestRollupAggregateSum(array) {
 		// Note: we don't use d3.sum here because we want to end up with a null value for "holes"
-		var sum = null, plus = null, minus = null, 
+		var sum = null, plus = null, minus = null,
 			d, v, i, len = array.length, groupId, negate = false,
 			minX, maxX;
 
 		for ( i = 0; i < len; i += 1 ) {
 			d = array[i];
 			groupId = d[parent.internalPropName].groupId;
-			
+
 			// ignore excluded sources...
 			if ( parent.sourceExcludeCallback() && parent.sourceExcludeCallback().call(parent.me, groupId, d.sourceId) ) {
 				continue;
@@ -117,22 +117,22 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 		if ( plus !== null || minus !== null ) {
 			sum = plus - minus;
 		}
-		return { date : dateForTimeKey(array[0].timeKey), 
-			y : sum, 
-			plus : plus, 
-			minus : minus, 
-			season : array[0].season, 
+		return { date : dateForTimeKey(array[0].timeKey),
+			y : sum,
+			plus : plus,
+			minus : minus,
+			season : array[0].season,
 			timeKey : array[0].timeKey,
 			groupId : array[0][parent.internalPropName].groupId };
 	}
-	
+
 	function setup() {
 		var groupIds = parent.groupIds,
 			rangeX = [null, null],
 			rangeY = [0, 0],
 			interval = timeKeyInterval(),
 			keyFormatter = d3.format('02g'); // ensure 10 sorts after 9
-		
+
 		groupLayers = {};
 
 		groupIds.forEach(function(groupId) {
@@ -143,7 +143,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 			if ( !rawGroupData || !rawGroupData.length > 1 ) {
 				return;
 			}
-			
+
 			layerData = d3.nest()
 				.key(function(d) {
 					if ( !d.hasOwnProperty(parent.internalPropName) ) {
@@ -157,7 +157,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 						d.season = sn.format.seasonForDate(d.date);
 						d.timeKey = timeKeyForDate(d.date);
 					}
-					
+
 					return d.season;
 				})
 				.key(function(d) {
@@ -166,22 +166,22 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 				.sortKeys(d3.ascending)
 				.rollup(nestRollupAggregateSum)
 				.entries(rawGroupData);
-			
+
 			if ( layerData.length < 1 ) {
 				return;
 			}
-			
+
 			if ( parent.layerPostProcessCallback() ) {
 				layerData = parent.layerPostProcessCallback().call(parent.me, groupId, layerData);
 			}
-			
+
 			groupLayers[groupId] = layerData;
-			
+
 			// calculate min/max values
 			layerValues = layerData.reduce(function(prev, d) {
 				return prev.concat(d.values.map(function(d) { return d.values; }));
 			}, []);
-			
+
 			range = d3.extent(layerValues, function(d) { return d.y; });
 			if ( range[0] < rangeY[0] ) {
 				rangeY[0] = range[0];
@@ -189,7 +189,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 			if ( range[1] > rangeY[1] ) {
 				rangeY[1] = range[1];
 			}
-			
+
 			range = d3.extent(layerValues, function(d) { return d.date.getTime(); });
 			if ( rangeX[0] === null || range[0] < rangeX[0].getTime() ) {
 				rangeX[0] = new Date(range[0]);
@@ -198,27 +198,27 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 				rangeX[1] = new Date(range[1]);
 			}
 		});
-		
-		// setup X domain		
+
+		// setup X domain
 		parent.x.domain(interval.range(rangeX[0], interval.offset(rangeX[1], 1)));
-		
+
 		// setup Y domain
 		parent.y.domain(rangeY).nice();
-		
+
 		parent.computeUnitsY();
 	}
-	
+
 	function axisXVertRule(d) {
 		return (Math.round(parent.x(d) + 0.5) - 0.5);
 	}
-	
+
 	function drawAxisXRules() {
 		var transitionMs = parent.transitionMs();
 		var axisLines = parent.svgRuleRoot.selectAll('line.vert').data(parent.x.domain());
 		axisLines.transition().duration(transitionMs)
 	  		.attr('x1', axisXVertRule)
 	  		.attr('x2', axisXVertRule);
-		
+
 		axisLines.enter().append('line')
 			.style('opacity', 1e-6)
 			.classed('vert', true)
@@ -232,12 +232,12 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 				// remove the opacity style
 				d3.select(this).style('opacity', null);
 			});
-		
+
 		axisLines.exit().transition().duration(transitionMs)
 			.style('opacity', 1e-6)
 			.remove();
 	}
-	
+
 	function setupDrawData() {
 		var groupedData = [[],[],[],[]], // one group per season
 			groupIds = parent.groupIds;
@@ -254,49 +254,49 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 				});
 			}
 		});
-		
+
 		return {
 			groupedData : groupedData
 		};
 	}
-	
+
 	function draw() {
 		var transitionMs = parent.transitionMs(),
 			seasons,
 			lines,
 			drawData;
-			
+
 		drawData = setupDrawData();
 
 		// we create groups for each season
 		seasons = parent.svgDataRoot.selectAll('g.season').data(drawData.groupedData);
-		
+
 		seasons.enter().append('g')
 			.attr('class', 'season')
 			.style('stroke', seasonColorFn);
-				
+
 		lines = seasons.selectAll('path.line').data(Object, function(d) {
 			return d[0].groupId;
 		});
-		
+
 		lines.transition().duration(transitionMs)
 				.attr('d', linePathGenerator);
-		
+
 		lines.enter().append('path')
 				.classed('line', true)
 				.attr('d', linePathGenerator);
-		
+
 		lines.exit().transition().duration(transitionMs)
 			.style('opacity', 1e-6)
 			.remove();
-		
+
 		superDraw();
 		drawAxisXRules();
 	}
 
 	/**
 	 * Toggle between nothern/southern hemisphere seasons, or get the current setting.
-	 * 
+	 *
 	 * @param {boolean} [value] <em>true</em> for northern hemisphere seasons, <em>false</em> for sothern hemisphere
 	 * @returns when used as a getter, the current setting
 	 * @memberOf sn.chart.baseGroupedSeasonalLineChart
@@ -314,7 +314,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 
 		return parent.me;
 	};
-	
+
 	/**
 	 * Get or set an array of group IDs to treat as negative group IDs, that appear below
 	 * the X axis.
@@ -345,32 +345,32 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 
 	/**
 	 * Get/set the x-axis time-based key names.
-	 * 
+	 *
 	 * @param {String[]} [value] the ordinal key names
 	 * @return if used as a getter an array with the keys, which are used as labels for the x-axis,
 	 *         otherwise this object
 	 * @memberOf sn.chart.baseGroupedSeasonalLineChart
 	 */
-	self.timeKeyLabels = function(value) { 
+	self.timeKeyLabels = function(value) {
 		if ( !arguments.length ) return timeKeyLabels;
 		if ( Array.isArray(value) ) {
 			timeKeyLabels = value;
 		}
 		return parent.me;
 	};
-	
+
 	Object.defineProperties(self, {
 		dateForTimeKey : { get : function() { return dateForTimeKey; }, set : function(v) { dateForTimeKey = v; } },
 		timeKeyForDate : { get : function() { return timeKeyForDate; }, set : function(v) { timeKeyForDate = v; } },
 		timeKeyInterval : { get : function() { return timeKeyInterval; }, set : function(v) { timeKeyInterval = v; } }
 	});
-	
+
 	// override our setup funciton
 	parent.setup = setup;
-	
+
 	// define our drawing function
 	parent.draw = draw;
-	
+
 	return self;
 };
 
