@@ -304,10 +304,10 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 	self.northernHemisphere = function(value) {
 		if ( !arguments.length ) return northernHemisphere;
 		if ( value === northernHemisphere ) {
-			return;
+			return parent.me;
 		}
 		northernHemisphere = (value === true);
-		
+
 		// immediately update path colors
 		parent.svgDataRoot.selectAll('g.season').transition().duration(parent.transitionMs())
 			.style('stroke', seasonColorFn);

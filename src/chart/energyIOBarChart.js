@@ -720,7 +720,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	self.northernHemisphere = function(value) {
 		if ( !arguments.length ) return northernHemisphere;
 		if ( value === northernHemisphere ) {
-			return;
+			return parent.me;
 		}
 		var transitionMs = parent.transitionMs();
 		northernHemisphere = (value === true);
