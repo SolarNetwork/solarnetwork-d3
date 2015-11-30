@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue) {
   "use strict";
   var sn = {
-    version: "0.9.4"
+    version: "0.9.5"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -1839,8 +1839,7 @@
     var internalPropName = "__internal__";
     var aggregates = [ "FiveMinute", "TenMinute", "FifteenMinute", "Hour", "HourOfDay", "SeasonalHourOfDay", "Day", "DayOfWeek", "SeasonalDayOfWeek", "Month" ];
     var config = chartConfig || new sn.Configuration();
-    var containerWidth = sn.ui.pixelWidth(containerSelector);
-    var p = config.padding || [ 10, 0, 20, 30 ], w = (config.width || containerWidth || 812) - p[1] - p[3], h = (config.height || 300) - p[0] - p[2], x = d3.time.scale.utc().range([ 0, w ]), y = d3.scale.linear().range([ h, 0 ]);
+    var p, w, h, x, y;
     var aggregateType;
     var plotProperties;
     var transitionMs;
@@ -1943,26 +1942,37 @@
         handleClick.call(that);
       }
     }
+    function parseDimensions() {
+      var containerWidth = sn.ui.pixelWidth(containerSelector);
+      p = config.padding || [ 10, 0, 20, 30 ];
+      w = (config.width || containerWidth || 812) - p[1] - p[3];
+      h = (config.height || 300) - p[0] - p[2];
+      x = d3.time.scale.utc().range([ 0, w ]);
+      y = d3.scale.linear().range([ h, 0 ]);
+    }
     function parseConfiguration() {
+      parseDimensions();
       self.aggregate(config.aggregate);
       self.plotProperties(config.value("plotProperties"));
       transitionMs = config.value("transitionMs") || 600;
       ruleOpacity = config.value("ruleOpacity") || .1;
       vertRuleOpacity = config.value("vertRuleOpacity") || .05;
     }
-    svgRoot = d3.select(containerSelector);
-    if (svgRoot.node() && svgRoot.node().tagName.toLowerCase() !== "svg") {
-      svgRoot = svgRoot.select("svg");
-      if (svgRoot.empty()) {
-        svgRoot = d3.select(containerSelector).append("svg:svg");
+    function setupSVG() {
+      svgRoot = d3.select(containerSelector);
+      if (svgRoot.node() && svgRoot.node().tagName.toLowerCase() !== "svg") {
+        svgRoot = svgRoot.select("svg");
+        if (svgRoot.empty()) {
+          svgRoot = d3.select(containerSelector).append("svg:svg");
+        }
+        svgRoot.attr("class", "chart").attr("width", w + p[1] + p[3]).attr("height", h + p[0] + p[2]).selectAll("*").remove();
       }
-      svgRoot.attr("class", "chart").attr("width", w + p[1] + p[3]).attr("height", h + p[0] + p[2]).selectAll("*").remove();
+      svgDataRoot = svgRoot.append("g").attr("class", "data-root").attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+      svgTickGroupX = svgRoot.append("g").attr("class", "ticks").attr("transform", "translate(" + p[3] + "," + (h + p[0] + p[2]) + ")");
+      svgRoot.append("g").attr("class", "crisp rule").attr("transform", "translate(0," + p[0] + ")");
+      svgRuleRoot = svgRoot.append("g").attr("class", "rule").attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+      svgAnnotRoot = svgRoot.append("g").attr("class", "annot-root").attr("transform", "translate(" + p[3] + "," + p[0] + ")");
     }
-    svgDataRoot = svgRoot.append("g").attr("class", "data-root").attr("transform", "translate(" + p[3] + "," + p[0] + ")");
-    svgTickGroupX = svgRoot.append("g").attr("class", "ticks").attr("transform", "translate(" + p[3] + "," + (h + p[0] + p[2]) + ")");
-    svgRoot.append("g").attr("class", "crisp rule").attr("transform", "translate(0," + p[0] + ")");
-    svgRuleRoot = svgRoot.append("g").attr("class", "rule").attr("transform", "translate(" + p[3] + "," + p[0] + ")");
-    svgAnnotRoot = svgRoot.append("g").attr("class", "annot-root").attr("transform", "translate(" + p[3] + "," + p[0] + ")");
     function computeUnitsY() {
       var fmt;
       var maxY = d3.max(y.domain(), function(v) {
@@ -2046,8 +2056,8 @@
       var yTicks = yAxisTicks();
       var axisLines = svgRoot.select("g.rule").selectAll("g").data(yTicks, Object);
       var axisLinesT = axisLines.transition().duration(transitionMs);
-      axisLinesT.attr("transform", axisYTransform).select("text").text(displayFormat).attr("class", axisTextClassY);
-      axisLinesT.select("line").attr("class", axisRuleClassY);
+      axisLinesT.attr("transform", axisYTransform).select("text").attr("x", p[3] - 10).text(displayFormat).attr("class", axisTextClassY);
+      axisLinesT.select("line").attr("x2", w + p[3]).attr("x1", p[3]).attr("class", axisRuleClassY);
       axisLines.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
       var entered = axisLines.enter().append("g").style("opacity", 1e-6).attr("transform", axisYTransform);
       entered.append("line").attr("x2", w + p[3]).attr("x1", p[3]).attr("class", axisRuleClassY);
@@ -2485,6 +2495,8 @@
       vertRuleOpacity = value;
       return me;
     };
+    parseConfiguration();
+    setupSVG();
     Object.defineProperties(self, {
       me: {
         get: function() {
@@ -2674,7 +2686,6 @@
         }
       }
     });
-    parseConfiguration();
     return self;
   };
   sn.chart.baseGroupedTimeChart = function(containerSelector, chartConfig) {
@@ -2950,7 +2961,7 @@
   }
   /**
  * An abstract base chart supporting seasonal aggregate groups.
- * 
+ *
  * @class
  * @extends sn.chart.baseGroupedChart
  * @param {string} containerSelector - the selector for the element to insert the chart into
@@ -3148,7 +3159,7 @@
     self.northernHemisphere = function(value) {
       if (!arguments.length) return northernHemisphere;
       if (value === northernHemisphere) {
-        return;
+        return parent.me;
       }
       northernHemisphere = value === true;
       parent.svgDataRoot.selectAll("g.season").transition().duration(parent.transitionMs()).style("stroke", seasonColorFn);
@@ -4026,14 +4037,14 @@
  */
   /**
  * An energy input and output chart designed to show consumption and generation data simultaneously.
- * 
+ *
  * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
  * in the chart. After changing the configuration call {@link sn.chart.energyIOBarChart#regenerate()}
  * to re-draw the chart.
- * 
+ *
  * Note that the global {@link sn.colorFn} function is used to map sources to colors, so that
  * must be set up previously.
- * 
+ *
  * @class
  * @extends sn.chart.baseGroupedStackBarChart
  * @param {string} containerSelector - the selector for the element to insert the chart into
@@ -4493,7 +4504,7 @@
     };
     /**
 	 * Toggle between nothern/southern hemisphere seasons, or get the current setting.
-	 * 
+	 *
 	 * @param {boolean} [value] <em>true</em> for northern hemisphere seasons, <em>false</em> for sothern hemisphere
 	 * @returns when used as a getter, the current setting
 	 * @memberOf sn.chart.energyIOBarChart
@@ -4502,7 +4513,7 @@
     self.northernHemisphere = function(value) {
       if (!arguments.length) return northernHemisphere;
       if (value === northernHemisphere) {
-        return;
+        return parent.me;
       }
       var transitionMs = parent.transitionMs();
       northernHemisphere = value === true;
