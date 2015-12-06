@@ -25,7 +25,7 @@ function sn_env_setDefaultEnv(defaults) {
 		}
 	}
 }
-	
+
 function sn_env_setEnv(environment) {
 	var prop;
 	for ( prop in environment ) {
@@ -39,8 +39,8 @@ sn.env = sn_env;
 sn.setEnv = sn_env_setEnv;
 sn.setDefaultEnv = sn_env_setDefaultEnv;
 
-if ( global !== undefined 
-		&& global.location !== undefined 
+if ( global !== undefined
+		&& global.location !== undefined
 		&& global.location.search !== undefined ) {
 	sn_env_setEnv(sn_net_parseURLQueryTerms(global.location.search));
 }
