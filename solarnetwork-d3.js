@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue) {
   "use strict";
   var sn = {
-    version: "0.9.6"
+    version: "0.9.8"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -104,7 +104,7 @@
     debug: false,
     host: "data.solarnetwork.net",
     tls: function() {
-      return global !== undefined && global.locaion !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
+      return global !== undefined && global.location !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
     }(),
     path: "/solarquery",
     solarUserPath: "/solaruser",
