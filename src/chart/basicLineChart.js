@@ -25,12 +25,8 @@ import "baseTimeChart";
 sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseTimeChart(containerSelector, chartConfig),
 		superDraw = sn.util.superMethod.call(parent, 'draw');
-	var self = (function() {
-		var	me = sn.util.copy(parent);
-		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
-		return me;
-	}());
-	parent.me = self;
+	var self = sn_util_copyAll(parent);
+	self.me = self;
 
 	// properties
 	var sourceExcludeCallback;
@@ -82,7 +78,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		} else if ( linePlotProperties[lineId] ) {
 			delete linePlotProperties[lineId];
 		}
-		return self;
+		return self.me;
 	};
 
 	/**
@@ -102,7 +98,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		} else {
 			sourceExcludeCallback = undefined;
 		}
-		return self;
+		return self.me;
 	};
 
 	/**
@@ -118,7 +114,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return colors.range();
 		colorArray = array;
 		colors.range(array);
-		return self;
+		return self.me;
 	};
 
 	/**
@@ -142,7 +138,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		lineIds.length = 0;
 		linePlotProperties = {};
 		lineDrawData.length = 0;
-		return self;
+		return self.me;
 	};
 
 	function setup() {
@@ -290,6 +286,62 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 			.remove();
 	}
 	*/
+
+	/**
+	 * Iterate over the time values in the chart's raw data, calling a function for each date.
+	 * The callback function will be passed an object with source IDs for keys with corresponding
+	 * data value objects as values. If a source does not have a value for a given date, that key
+	 * will not be defined. The callback function will be passed a second Date argument representing
+	 * the date of the associated data. The callback's <code>this</code> object will be set to this chart object.
+	 *
+	 * @param {function} callback - The callback function to invoke, provided with the data and date arguments.
+	 * @return This object.
+	 * @memberOf sn.chart.basicLineChart
+	 * @preserve
+	 */
+	self.enumerateDataOverTime = function(callback) {
+		if ( typeof callback !== 'function' ) {
+			return self.me;
+		}
+		if ( !lineIds || lineIds.length < 1 ) {
+			return self.me;
+		}
+
+		// merge all data into single array, then sort by time for iteration
+		var dataArray = [],
+			datumDate = sn.api.datum.datumDate,
+			callbackData = { date: null, data: {} };
+
+		lineIds.forEach(function(lineId) {
+			dataArray.push(originalData[lineId]);
+		});
+		dataArray = d3.merge(dataArray).sort(function(l, r) {
+			var lD = datumDate(l);
+			if ( !l.date ) {
+				l.date = lD;
+			}
+			var lR = datumDate(r);
+			if ( !r.date ) {
+				r.date = rD;
+			}
+			return (lD < lR ? -1 : lD > lR ? 1 : 0);
+		});
+
+		dataArray.forEach(function(d) {
+			var date = datumDate(d);
+			if ( callbackData.date && date > callbackData.date ) {
+				// moving to new date... invoke callback with current data
+				callback.call(self.me, callbackData.data, callbackData.date);
+				callbackData.date = date;
+				callbackData.data = {};
+			} else if ( !callbackData.date ) {
+				callbackData.date = date;
+			}
+			callbackData.data[d.sourceId] = d;
+		});
+
+		return self.me;
+	};
 
 	// wire up implementations
 	parent.setup = setup;

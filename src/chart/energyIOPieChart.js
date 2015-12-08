@@ -2,6 +2,7 @@ import "chart";
 import "../config/Configuration"
 import "../math/math";
 import "../ui/pixelWidth";
+import "../api/datum/date.js";
 
 /**
  * @typedef sn.chart.energyIOPieChartParameters
@@ -76,6 +77,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var percentFormatter = d3.format('.0%');
 
 	var originalData = {};
+	var pieData = []; // derived data from originalData
 	var groupIds = [];
 	var pieSlices = undefined;
 	var totalValue = 0;
@@ -285,13 +287,13 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			}));
 		});
 
-
 		var pie = d3.layout.pie()
 			.sort(layerKeySort)
 			.value(function(d) {
 				return d.sum;
 			});
 
+		pieData = combinedRollup;
 		pieSlices = pie(combinedRollup);
 
 		computeUnits();
@@ -540,6 +542,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	self.reset = function() {
 		originalData = {};
 		groupIds = [];
+		pieData = [];
 		pieSlices = undefined;
 		return me;
 	};
@@ -733,7 +736,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 *
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse enter callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.energyIOPieChart
 	 */
 	self.hoverEnterCallback = function(value) {
 		if ( !arguments.length ) return hoverEnterCallback;
@@ -752,7 +755,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 *
 	 * @param {function} [value] the hover callback
 	 * @return when used as a getter, the current hover callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.energyIOPieChart
 	 */
 	self.hoverMoveCallback = function(value) {
 		if ( !arguments.length ) return hoverMoveCallback;
@@ -772,7 +775,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 *
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse leave callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.energyIOPieChart
 	 */
 	self.hoverLeaveCallback = function(value) {
 		if ( !arguments.length ) return hoverLeaveCallback;
@@ -791,7 +794,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 *
 	 * @param {function} [value] the click callback
 	 * @return when used as a getter, the current click callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.energyIOPieChart
 	 */
 	self.clickCallback = function(value) {
 		if ( !arguments.length ) return clickCallback;
@@ -800,6 +803,82 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		} else {
 			clickCallback = undefined;
 		}
+		return me;
+	};
+
+	/**
+	 * Export the chart data, that is the calculated pie summary data.
+	 *
+	 * The callback function will be passed an object with group and source ID and a <code>sum</code> number.
+	 * The callback's <code>this</code> object will be set to this chart object.
+	 *
+	 * @param {function} callback - The callback function to invoke.
+	 * @return This object.
+	 * @memberOf sn.chart.energyIOPieChart
+	 * @preserve
+	 */
+	self.exportChartData = function(callback) {
+		if ( typeof callback === 'function' && Array.isArray(pieData) ) {
+			pieData.forEach(function(d) {
+				callback.call(me, d);
+			});
+		}
+		return me;
+	};
+
+	/**
+	 * Iterate over the time values in the chart's raw data, calling a function for each date.
+	 * The callback function will be passed an object with source IDs for keys with corresponding
+	 * data value objects as values. If a source does not have a value for a given date, that key
+	 * will not be defined. The callback function will be passed a second Date argument representing
+	 * the date of the associated data. The callback's <code>this</code> object will be set to this chart object.
+	 *
+	 * @param {function} callback - The callback function to invoke, provided with the data and date arguments.
+	 * @return This object.
+	 * @memberOf sn.chart.baseGroupedStackTimeChart
+	 * @preserve
+	 */
+	self.enumerateDataOverTime = function(callback) {
+		if ( typeof callback !== 'function' ) {
+			return me;
+		}
+		if ( !groupIds || groupIds.length < 1 ) {
+			return me;
+		}
+
+		// merge all data into single array, then sort by time for iteration
+		var dataArray = [],
+			datumDate = sn.api.datum.datumDate,
+			callbackData = { date: null, data: {} };
+
+		groupIds.forEach(function(groupId) {
+			dataArray.push(originalData[groupId]);
+		});
+		dataArray = d3.merge(dataArray).sort(function(l, r) {
+			var lD = datumDate(l);
+			if ( !l.date ) {
+				l.date = lD;
+			}
+			var lR = datumDate(r);
+			if ( !r.date ) {
+				r.date = rD;
+			}
+			return (lD < lR ? -1 : lD > lR ? 1 : 0);
+		});
+
+		dataArray.forEach(function(d) {
+			var date = datumDate(d);
+			if ( callbackData.date && date > callbackData.date ) {
+				// moving to new date... invoke callback with current data
+				callback.call(me, callbackData.data, callbackData.date);
+				callbackData.date = date;
+				callbackData.data = {};
+			} else if ( !callbackData.date ) {
+				callbackData.date = date;
+			}
+			callbackData.data[d.sourceId] = d;
+		});
+
 		return me;
 	};
 
