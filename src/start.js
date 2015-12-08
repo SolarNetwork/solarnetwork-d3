@@ -8,4 +8,4 @@
 	}
 }(this, function(colorbrewer, d3, queue) {
 	'use strict';
-	var sn = {version: "0.9.8"};
+	var sn = {version: "0.9.9"};
