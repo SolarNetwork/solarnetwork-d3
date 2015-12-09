@@ -1,14 +1,26 @@
 import "net";
 
-sn.net.securityHelper = function() {
+/**
+ * Helper for secure SolarNetwork API access. Configure a <code>token</code> and <code>secret</code>
+ * and then use the <code>json</code> function to make secure SolarNetwork API requests. The returned
+ * object is also a function that can be called directly, instead of using the <code>json</code> property.
+ *
+ * @class
+ * @param {String} [apiToken] - An initial token to use.
+ * @param {String} [apiTokenSecret] - An initial token secret to use.
+ * @returns {sn.net.securityHelper}
+ * @preserve
+ */
+sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	'use strict';
-	var that = { version : '1.1.0' };
+	var that = json;
 
 	// our in-memory credentials
-	var cred = {token: undefined, secret: undefined};
+	var cred = {token: apiToken, secret: apiTokenSecret};
 
 	// setup core properties
 	Object.defineProperties(that, {
+		version								: { value : '1.2.0' },
 		hasTokenCredentials					: { value : hasTokenCredentials },
 		token								: { value : token },
 		secret								: { value : secret },
