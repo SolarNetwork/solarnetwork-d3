@@ -1,15 +1,15 @@
 (function(root, factory) {
   if (typeof define === "function" && define.amd) {
-    define([ "colorbrewer", "d3", "queue-async" ], factory);
+    define([ "colorbrewer", "d3", "queue-async", "crypto-js" ], factory);
   } else if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("colorbrewer"), require("d3"), require("queue-async"));
+    module.exports = factory(require("colorbrewer"), require("d3"), require("queue-async"), require("crypto-js"));
   } else {
-    root.sn = factory(root.colorbrewer, root.d3, root.queue);
+    root.sn = factory(root.colorbrewer, root.d3, root.queue, root.CryptoJS);
   }
-})(this, function(colorbrewer, d3, queue) {
+})(this, function(colorbrewer, d3, queue, CryptoJS) {
   "use strict";
   var sn = {
-    version: "0.9.9"
+    version: "0.10.0"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -897,11 +897,16 @@
  */
   sn.api.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
     var that = load;
-    that.version = "1.0.0";
+    var jsonClient = d3.json;
     var finishedCallback;
     var urlParameters;
     var state = 0;
     var results;
+    Object.defineProperties(that, {
+      version: {
+        value: "1.1.0"
+      }
+    });
     function load(callback) {
       if (typeof callback === "function") {
         finishedCallback = callback;
@@ -939,7 +944,7 @@
       offsetExtractor = function(json) {
         return json.data.returnedResultCount + json.data.startingOffset < json.data.totalResults ? json.data.returnedResultCount + json.data.startingOffset : 0;
       };
-      d3.json(url, function(error, json) {
+      jsonClient(url, function(error, json) {
         var dataArray, nextOffset;
         if (error) {
           sn.log("Error requesting data for {0}: {2}", urlHelper.keyDescription(), error);
@@ -995,6 +1000,23 @@
       if (!arguments.length) return urlParameters;
       if (typeof value === "object") {
         urlParameters = value;
+      }
+      return that;
+    };
+    /**
+	 * Get or set a JSON client function to use. The function must be compatible with <code>d3.json</code>
+	 * and in fact defaults to that. You could set it to a <code>sn.net.securityHelper</code> instance
+	 * to use security token API requests, for example.
+	 *
+	 * @param {function} [value] the JSON client function, compatible with <code>d3.json</code>.
+	 * @return when used as a getter, the JSON client function, otherwise this object
+	 * @since 1.1
+	 * @preserve
+	 */
+    that.jsonClient = function(value) {
+      if (!arguments.length) return jsonClient;
+      if (typeof value === "function") {
+        jsonClient = value;
       }
       return that;
     };
@@ -6189,16 +6211,28 @@
     }
     return result;
   }
-  sn.net.securityHelper = function() {
+  /**
+ * Helper for secure SolarNetwork API access. Configure a <code>token</code> and <code>secret</code>
+ * and then use the <code>json</code> function to make secure SolarNetwork API requests. The returned
+ * object is also a function that can be called directly, instead of using the <code>json</code> property.
+ *
+ * @class
+ * @param {String} [apiToken] - An initial token to use.
+ * @param {String} [apiTokenSecret] - An initial token secret to use.
+ * @returns {sn.net.securityHelper}
+ * @preserve
+ */
+  sn.net.securityHelper = function(apiToken, apiTokenSecret) {
     "use strict";
-    var that = {
-      version: "1.1.0"
-    };
+    var that = json;
     var cred = {
-      token: undefined,
-      secret: undefined
+      token: apiToken,
+      secret: apiTokenSecret
     };
     Object.defineProperties(that, {
+      version: {
+        value: "1.2.0"
+      },
       hasTokenCredentials: {
         value: hasTokenCredentials
       },
@@ -6272,7 +6306,7 @@
     }
     /**
 	 * Clear the in-memory secret.
-	 * 
+	 *
 	 * @returns This object.
 	 * @preserve
 	 */
@@ -6285,14 +6319,14 @@
     }
     /**
 	 * Generate the authorization header value for a set of request parameters.
-	 * 
-	 * <p>This returns just the authorization header value, without the scheme. For 
-	 * example this might return a value like 
+	 *
+	 * <p>This returns just the authorization header value, without the scheme. For
+	 * example this might return a value like
 	 * <code>a09sjds09wu9wjsd9uya:6U2NcYHz8jaYhPd5Xr07KmfZbnw=</code>. To use
 	 * as a valid <code>Authorization</code> header, you must still prefix the
 	 * returned value with <code>SolarNetworkWS</code> (with a space between
 	 * that prefix and the associated value).</p>
-	 * 
+	 *
 	 * @param {Object} params the request parameters
 	 * @param {String} params.method the HTTP request method
 	 * @param {String} params.data the HTTP request body
@@ -6312,10 +6346,10 @@
     /**
 	 * Parse the query portion of a URL string, and return a parameter object for the
 	 * parsed key/value pairs.
-	 * 
+	 *
 	 * <p>Multiple parameters of the same name are <b>not</b> supported.</p>
-	 * 
-	 * @param {String} search the query portion of the URL, which may optionally include 
+	 *
+	 * @param {String} search the query portion of the URL, which may optionally include
 	 *                        the leading '?' character
 	 * @return {Object} the parsed query parameters, as a parameter object
 	 * @preserve
@@ -6341,12 +6375,12 @@
     }
     /**
 	 * Generate the SolarNetworkWS path required by the authorization header value.
-	 * 
+	 *
 	 * <p>This method will parse the given URL and then apply the path canonicalization
 	 * rules defined by the SolarNetworkWS scheme.</p>
-	 * 
+	 *
 	 * @param {String} url the request URL
-	 * @return {String} path the canonicalized path value to use in the SolarNetworkWS 
+	 * @return {String} path the canonicalized path value to use in the SolarNetworkWS
 	 *                       authorization header value
 	 * @preserve
 	 */
@@ -6383,14 +6417,14 @@
     /**
 	 * Invoke the web service URL, adding the required SolarNetworkWS authorization
 	 * headers to the request.
-	 * 
+	 *
 	 * <p>This method will construct the <code>X-SN-Date</code> and <code>Authorization</code>
 	 * header values needed to invoke the web service. It returns a d3 XHR object,
 	 * so you can call <code>.on()</code> on that to handle the response, unless a callback
-	 * parameter is specified, then the request is issued immediately, passing the 
+	 * parameter is specified, then the request is issued immediately, passing the
 	 * <code>method</code>, <code>data</code>, and <code>callback</code> parameters
 	 * to <code>xhr.send()</code>.</p>
-	 * 
+	 *
 	 * @param {String} url the web service URL to invoke
 	 * @param {String} method the HTTP method to use; e.g. GET or POST
 	 * @param {String} [data] the data to upload
