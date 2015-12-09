@@ -21,13 +21,18 @@ import "../../net/net";
 sn.api.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 
 	var that = load;
-	that.version = '1.0.0';
 
+	var jsonClient = d3.json;
 	var finishedCallback;
 	var urlParameters;
 
 	var state = 0; // keys are source IDs, values are 1:loading, 2:done
 	var results;
+
+	// setup core properties
+	Object.defineProperties(that, {
+		version								: { value : '1.1.0' }
+	});
 
 	function load(callback) {
 		// to support queue use, allow callback to be passed directly to this function
@@ -76,7 +81,7 @@ sn.api.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 					? (json.data.returnedResultCount + json.data.startingOffset)
 					: 0);
 		};
-		d3.json(url, function(error, json) {
+		jsonClient(url, function(error, json) {
 			var dataArray,
 				nextOffset;
 			if ( error ) {
@@ -136,6 +141,24 @@ sn.api.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 		if ( !arguments.length ) return urlParameters;
 		if ( typeof value === 'object' ) {
 			urlParameters = value;
+		}
+		return that;
+	};
+
+	/**
+	 * Get or set a JSON client function to use. The function must be compatible with <code>d3.json</code>
+	 * and in fact defaults to that. You could set it to a <code>sn.net.securityHelper</code> instance
+	 * to use security token API requests, for example.
+	 *
+	 * @param {function} [value] the JSON client function, compatible with <code>d3.json</code>.
+	 * @return when used as a getter, the JSON client function, otherwise this object
+	 * @since 1.1
+	 * @preserve
+	 */
+	that.jsonClient = function(value) {
+		if ( !arguments.length ) return jsonClient;
+		if ( typeof value === 'function' ) {
+			jsonClient = value;
 		}
 		return that;
 	};
