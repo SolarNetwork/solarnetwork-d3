@@ -81,7 +81,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 
 	/**
 	 * Clear the in-memory secret.
-	 * 
+	 *
 	 * @returns This object.
 	 * @preserve
 	 */
@@ -91,7 +91,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	}
 
 	/**
-	 * Test if a Content-MD5 hash should be included in the request, based on the 
+	 * Test if a Content-MD5 hash should be included in the request, based on the
 	 * request content type.
 	 *
 	 * @param {String} contentType the content type
@@ -104,14 +104,14 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 
 	/**
 	 * Generate the authorization header value for a set of request parameters.
-	 * 
-	 * <p>This returns just the authorization header value, without the scheme. For 
-	 * example this might return a value like 
+	 *
+	 * <p>This returns just the authorization header value, without the scheme. For
+	 * example this might return a value like
 	 * <code>a09sjds09wu9wjsd9uya:6U2NcYHz8jaYhPd5Xr07KmfZbnw=</code>. To use
 	 * as a valid <code>Authorization</code> header, you must still prefix the
 	 * returned value with <code>SolarNetworkWS</code> (with a space between
 	 * that prefix and the associated value).</p>
-	 * 
+	 *
 	 * @param {Object} params the request parameters
 	 * @param {String} params.method the HTTP request method
 	 * @param {String} params.data the HTTP request body
@@ -123,7 +123,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	 * @preserve
 	 */
 	function generateAuthorizationHeaderValue(params) {
-		var msg = 
+		var msg =
 			(params.method === undefined ? 'GET' : params.method.toUpperCase()) + '\n'
 			+(params.data !== undefined && shouldIncludeContentMD5(params.contentType) ? CryptoJS.MD5(params.data) : '') + '\n'
 			+(params.contentType === undefined ? '' : params.contentType) + '\n'
@@ -137,10 +137,10 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	/**
 	 * Parse the query portion of a URL string, and return a parameter object for the
 	 * parsed key/value pairs.
-	 * 
+	 *
 	 * <p>Multiple parameters of the same name are <b>not</b> supported.</p>
-	 * 
-	 * @param {String} search the query portion of the URL, which may optionally include 
+	 *
+	 * @param {String} search the query portion of the URL, which may optionally include
 	 *                        the leading '?' character
 	 * @return {Object} the parsed query parameters, as a parameter object
 	 * @preserve
@@ -168,12 +168,12 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 
 	/**
 	 * Generate the SolarNetworkWS path required by the authorization header value.
-	 * 
+	 *
 	 * <p>This method will parse the given URL and then apply the path canonicalization
 	 * rules defined by the SolarNetworkWS scheme.</p>
-	 * 
+	 *
 	 * @param {String} url the request URL
-	 * @return {String} path the canonicalized path value to use in the SolarNetworkWS 
+	 * @return {String} path the canonicalized path value to use in the SolarNetworkWS
 	 *                       authorization header value
 	 * @preserve
 	 */
@@ -181,18 +181,18 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 		var a = document.createElement('a');
 		a.href = url;
 		var path = a.pathname;
-	
+
 		// handle query params, which must be sorted
 		var params = parseURLQueryTerms(data === undefined ? a.search : data);
 		var sortedKeys = [], key = undefined;
 		var i, len;
 		var first = true;
-	
+
 		// work around IE bug https://connect.microsoft.com/IE/Feedback/Details/1002846
 		if ( path.length > 0 && path.charAt(0) !== '/' ) {
 			path = '/' + path;
 		}
-	
+
 		for ( key in params ) {
 			sortedKeys.push(key);
 		}
@@ -216,14 +216,14 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	/**
 	 * Invoke the web service URL, adding the required SolarNetworkWS authorization
 	 * headers to the request.
-	 * 
+	 *
 	 * <p>This method will construct the <code>X-SN-Date</code> and <code>Authorization</code>
 	 * header values needed to invoke the web service. It returns a d3 XHR object,
 	 * so you can call <code>.on()</code> on that to handle the response, unless a callback
-	 * parameter is specified, then the request is issued immediately, passing the 
+	 * parameter is specified, then the request is issued immediately, passing the
 	 * <code>method</code>, <code>data</code>, and <code>callback</code> parameters
 	 * to <code>xhr.send()</code>.</p>
-	 * 
+	 *
 	 * @param {String} url the web service URL to invoke
 	 * @param {String} method the HTTP method to use; e.g. GET or POST
 	 * @param {String} [data] the data to upload
@@ -272,14 +272,14 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 			xhr.header('Content-Type', contentType);
 		}
 		xhr.on('beforesend', function(request) {
-			// get a date, which we must include as a header as well as include in the 
+			// get a date, which we must include as a header as well as include in the
 			// generated authorization hash
-			var date = new Date().toUTCString();		
-		
+			var date = new Date().toUTCString();
+
 			// construct our canonicalized path value from our URL
-			var path = authURLPath(url, 
+			var path = authURLPath(url,
 				(contentType !== undefined && contentType.indexOf('application/x-www-form-urlencoded') === 0 ? data : undefined));
-		
+
 			// generate the authorization hash value now (cryptographically signing our request)
 			var auth = generateAuthorizationHeaderValue({
 				method: method,
@@ -290,7 +290,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 				data: data,
 				contentType: contentType
 			});
-		
+
 			// set the headers on our request
 			if ( data !== undefined && shouldIncludeContentMD5(contentType) ) {
 				request.setRequestHeader('Content-MD5', CryptoJS.MD5(data));
@@ -298,12 +298,12 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 			request.setRequestHeader('X-SN-Date', date);
 			request.setRequestHeader('Authorization', 'SolarNetworkWS ' +auth);
 		});
-	
+
 		// register a load handler always, just so one is present
 		xhr.on('load.internal', function() {
 			//sn.log('URL {0} response received.', url);
 		});
-	
+
 		if ( callback !== undefined ) {
 			xhr.send(method, data, callback);
 		}
