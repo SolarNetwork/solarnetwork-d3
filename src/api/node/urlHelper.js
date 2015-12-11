@@ -8,7 +8,7 @@ var sn_api_node_urlHelperFunctions;
 
 /**
  * A node-specific URL utility object.
- * 
+ *
  * @class
  * @constructor
  * @param {Number} node The node ID to use.
@@ -19,16 +19,16 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 	var that = {
 		version : '1.1.0'
 	};
-	
+
 	var nodeId = node;
-	
+
 	var config = sn.util.copy(configuration, {
 		host : 'data.solarnetwork.net',
 		tls : true,
 		path : '/solarquery',
 		secureQuery : false
 	});
-	
+
 	/**
 	 * Get a URL for just the SolarNet host, without any path.
 	 *
@@ -38,7 +38,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 	function hostURL() {
 		return ('http' +(config.tls === true ? 's' : '') +'://' +config.host);
 	}
-	
+
 	/**
 	 * Get a URL for the SolarNet host and the base API path, e.g. <code>/solarquery/api/v1/sec</code>.
 	 *
@@ -48,11 +48,11 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 	function baseURL() {
 		return (hostURL() +config.path +'/api/v1/' +(config.secureQuery === true ? 'sec' : 'pub'));
 	}
-	
+
 	/**
 	 * Get a URL for the "reportable interval" for this node, optionally limited to a specific source ID.
 	 *
-	 * @param {Array} sourceIds An array of source IDs to limit query to. If not provided then all available 
+	 * @param {Array} sourceIds An array of source IDs to limit query to. If not provided then all available
 	 *                sources will be returned.
 	 * @returns {String} the URL to find the reportable interval
 	 * @memberOf sn.api.node.nodeUrlHelper
@@ -64,7 +64,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 		}
 		return url;
 	}
-	
+
 	/**
 	 * Get a available source IDs for this node, optionally limited to a date range.
 	 *
@@ -83,10 +83,10 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 		}
 		return url;
 	}
-	
+
 	/**
 	 * Generate a SolarNet {@code /datum/list} URL.
-	 * 
+	 *
 	 * @param {Date} startDate The starting date for the query, or <em>null</em> to omit
 	 * @param {Date} endDate The ending date for the query, or <em>null</em> to omit
 	 * @param {String|Number} agg A supported aggregate type (e.g. Hour, Day, etc) or a minute precision Number
@@ -119,10 +119,10 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 		}
 		return url;
 	}
-		
+
 	/**
 	 * Generate a SolarNet {@code /datum/mostRecent} URL.
-	 * 
+	 *
 	 * @param {Array} sourceIds Array of source IDs to limit query to
 	 * @return {String} the URL to perform the most recent query with
 	 * @memberOf sn.api.node.nodeUrlHelper
@@ -134,10 +134,10 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 		}
 		return url;
 	}
-	
+
 	/**
 	 * Get or set the node ID to use.
-	 * 
+	 *
 	 * @param {String} [value] the node ID to use
 	 * @return when used as a getter, the node ID, otherwise this object
 	 * @memberOf sn.api.node.nodeUrlHelper
@@ -147,7 +147,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 		nodeId = value;
 		return that;
 	}
-	
+
 	/**
 	 * Get a description of this helper object.
 	 *
@@ -157,7 +157,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 	function keyDescription() {
 		return ('node ' +nodeId);
 	}
-	
+
 	// setup core properties
 	Object.defineProperties(that, {
 		secureQuery				: { get : function() { return (config.secureQuery === true); }, enumerable : true },
@@ -171,7 +171,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 		dateTimeListURL			: { value : dateTimeListURL },
 		mostRecentURL			: { value : mostRecentURL }
 	});
-	
+
 	// allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
 	(function() {
 		if ( Array.isArray(sn_api_node_urlHelperFunctions) ) {
@@ -190,7 +190,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 
 /**
  * Register a custom function to generate URLs with {@link sn.api.node.nodeUrlHelper}.
- * 
+ *
  * @param {String} name The name to give the custom function. By convention the function
  *                      names should end with 'URL'.
  * @param {Function} func The function to add to sn.api.node.nodeUrlHelper instances.
