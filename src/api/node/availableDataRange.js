@@ -5,13 +5,13 @@ sn.api.node.availableDataRange = sn_api_node_availableDataRange;
 /**
  * Call the {@code reportableIntervalURL} web service for a set of source IDs and
  * invoke a callback function with the results.
- * 
+ *
  * <p>The callback function will be passed the same 'data' object returned
  * by the {@code reportableIntervalURL} endpoint, but the start/end dates will be
  * a combination of the earliest available and latest available results for
  * every different node ID provided.
- * 
- * @param {Array} sourceSets An array of objects, each with a {@code sourceIds} array 
+ *
+ * @param {Array} sourceSets An array of objects, each with a {@code sourceIds} array
  *                property and a {@code nodeUrlHelper} {@code sn.api.node.nodeUrlHelper}
  *                or {@code locationUrlHelper} {@code sn.api.loc.locationUrlHelper}
  *                propery.
@@ -48,15 +48,15 @@ function sn_api_node_availableDataRange(sourceSets, jsonClient, callback) {
 			}
 		}
 	}());
-	
+
 	function extractReportableInterval(results) {
-		var result, 
+		var result,
 			i = 0,
 			repInterval;
 		for ( i = 0; i < results.length; i += 1 ) {
 			repInterval = results[i];
 			if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
-				sn.log('No data available for {0} sources {1}', 
+				sn.log('No data available for {0} sources {1}',
 					helpers[i].keyDescription(), sourceSets[i].sourceIds.join(','));
 				continue;
 			}
@@ -78,7 +78,7 @@ function sn_api_node_availableDataRange(sourceSets, jsonClient, callback) {
 		}
 		return result;
 	}
-	
+
 	q.awaitAll(function(error, results) {
 		if ( error ) {
 			sn.log('Error requesting available data range: ' +error);

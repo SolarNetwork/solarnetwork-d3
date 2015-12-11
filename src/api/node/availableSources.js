@@ -4,10 +4,10 @@ sn.api.node.availableSources = sn_api_node_availableSources;
 
 /**
  * Call the {@code availableSourcesURL} web service and invoke a callback function with the results.
- * 
+ *
  * <p>The callback function will be passed an error object and the array of sources.
- * 
- * @param {sn.api.node.nodeUrlHelper} urlHelper A {@link sn.api.node.nodeUrlHelper} or 
+ *
+ * @param {sn.api.node.nodeUrlHelper} urlHelper A {@link sn.api.node.nodeUrlHelper} or
                                              {@link sn.api.loc.locationUrlHelper} object.
  * @param {d3.json} [jsonClient] A <code>d3.json</code> compatible object.
  * @param {Function} callback A callback function which will be passed an error object
