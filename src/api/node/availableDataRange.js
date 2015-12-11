@@ -15,13 +15,19 @@ sn.api.node.availableDataRange = sn_api_node_availableDataRange;
  *                property and a {@code nodeUrlHelper} {@code sn.api.node.nodeUrlHelper}
  *                or {@code locationUrlHelper} {@code sn.api.loc.locationUrlHelper}
  *                propery.
+ * @param {d3.json} [jsonClient] A <code>d3.json</code> compatible object.
  * @param {Function} [callback] A callback function which will be passed the result object.
  * @preserve
  */
-function sn_api_node_availableDataRange(sourceSets, callback) {
+function sn_api_node_availableDataRange(sourceSets, jsonClient, callback) {
 	var q = queue(),
 		helpers = [];
-	
+
+	if ( callback === undefined ) {
+		callback = jsonClient;
+		jsonClient = d3.json;
+	}
+
 	// submit all queries to our queue
 	(function() {
 		var i,
@@ -38,7 +44,7 @@ function sn_api_node_availableDataRange(sourceSets, callback) {
 			if ( urlHelper && urlHelper.reportableIntervalURL ) {
 				helpers.push(urlHelper);
 				url = urlHelper.reportableIntervalURL(sourceSets[i].sourceIds);
-				q.defer(d3.json, url);
+				q.defer(jsonClient, url);
 			}
 		}
 	}());
