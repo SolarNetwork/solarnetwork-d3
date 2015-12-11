@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue, CryptoJS) {
   "use strict";
   var sn = {
-    version: "0.10.0"
+    version: "0.11.0"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -232,9 +232,9 @@
     function reportableIntervalURL(sourceIds) {
       var url = baseURL() + "/range/interval?nodeId=" + nodeId;
       if (Array.isArray(sourceIds)) {
-        url += "&" + sourceIds.map(function(e) {
-          return "sourceIds=" + encodeURIComponent(e);
-        }).join("&");
+        url += "&sourceIds=" + sourceIds.map(function(e) {
+          return encodeURIComponent(e);
+        }).join(",");
       }
       return url;
     }
@@ -260,9 +260,9 @@
         url += "&aggregate=" + encodeURIComponent(agg);
       }
       if (Array.isArray(sourceIds) && sourceIds.length > 0) {
-        url += "&" + sourceIds.map(function(e) {
-          return "sourceIds=" + encodeURIComponent(e);
-        }).join("&");
+        url += "&sourceIds=" + sourceIds.map(function(e) {
+          return encodeURIComponent(e);
+        }).join(",");
       }
       if (pagination !== undefined) {
         if (pagination.max > 0) {
@@ -277,9 +277,9 @@
     function mostRecentURL(sourceIds) {
       var url = baseURL() + "/datum/mostRecent?nodeId=" + nodeId;
       if (Array.isArray(sourceIds)) {
-        url += "&" + sourceIds.map(function(e) {
-          return "sourceIds=" + encodeURIComponent(e);
-        }).join("&");
+        url += "&sourceIds=" + sourceIds.map(function(e) {
+          return encodeURIComponent(e);
+        }).join(",");
       }
       return url;
     }
@@ -1383,21 +1383,26 @@
   /**
  * Call the {@code reportableIntervalURL} web service for a set of source IDs and
  * invoke a callback function with the results.
- * 
+ *
  * <p>The callback function will be passed the same 'data' object returned
  * by the {@code reportableIntervalURL} endpoint, but the start/end dates will be
  * a combination of the earliest available and latest available results for
  * every different node ID provided.
- * 
- * @param {Array} sourceSets An array of objects, each with a {@code sourceIds} array 
+ *
+ * @param {Array} sourceSets An array of objects, each with a {@code sourceIds} array
  *                property and a {@code nodeUrlHelper} {@code sn.api.node.nodeUrlHelper}
  *                or {@code locationUrlHelper} {@code sn.api.loc.locationUrlHelper}
  *                propery.
+ * @param {d3.json} [jsonClient] A <code>d3.json</code> compatible object.
  * @param {Function} [callback] A callback function which will be passed the result object.
  * @preserve
  */
-  function sn_api_node_availableDataRange(sourceSets, callback) {
+  function sn_api_node_availableDataRange(sourceSets, jsonClient, callback) {
     var q = queue(), helpers = [];
+    if (callback === undefined) {
+      callback = jsonClient;
+      jsonClient = d3.json;
+    }
     (function() {
       var i, url, urlHelper;
       for (i = 0; i < sourceSets.length; i += 1) {
@@ -1411,7 +1416,7 @@
         if (urlHelper && urlHelper.reportableIntervalURL) {
           helpers.push(urlHelper);
           url = urlHelper.reportableIntervalURL(sourceSets[i].sourceIds);
-          q.defer(d3.json, url);
+          q.defer(jsonClient, url);
         }
       }
     })();
@@ -1459,21 +1464,26 @@
   sn.api.node.availableSources = sn_api_node_availableSources;
   /**
  * Call the {@code availableSourcesURL} web service and invoke a callback function with the results.
- * 
+ *
  * <p>The callback function will be passed an error object and the array of sources.
- * 
- * @param {sn.api.node.nodeUrlHelper} urlHelper A {@link sn.api.node.nodeUrlHelper} or 
+ *
+ * @param {sn.api.node.nodeUrlHelper} urlHelper A {@link sn.api.node.nodeUrlHelper} or
                                              {@link sn.api.loc.locationUrlHelper} object.
+ * @param {d3.json} [jsonClient] A <code>d3.json</code> compatible object.
  * @param {Function} callback A callback function which will be passed an error object
  *                            and the result array.
  * @preserve
  */
-  function sn_api_node_availableSources(urlHelper, callback) {
+  function sn_api_node_availableSources(urlHelper, jsonClient, callback) {
+    if (callback === undefined) {
+      callback = jsonClient;
+      jsonClient = d3.json;
+    }
     if (!(urlHelper && urlHelper.availableSourcesURL && callback)) {
       return;
     }
     var url = urlHelper.availableSourcesURL();
-    d3.json(url, function(error, json) {
+    jsonClient(url, function(error, json) {
       var sources;
       if (error) {
         callback(error);
@@ -1493,7 +1503,7 @@
   var sn_api_loc_urlHelperFunctions;
   /**
  * A location-specific URL utility object.
- * 
+ *
  * @class
  * @constructor
  * @param {Number} location The location ID to use.
@@ -1535,7 +1545,7 @@
     /**
 	 * Get a URL for the "reportable interval" for this location, optionally limited to a specific source ID.
 	 *
-	 * @param {Array} sourceIds An array of source IDs to limit query to. If not provided then all available 
+	 * @param {Array} sourceIds An array of source IDs to limit query to. If not provided then all available
 	 *                sources will be returned.
 	 * @returns {String} the URL to find the reportable interval
 	 * @memberOf sn.api.loc.locationUrlHelper
@@ -1544,9 +1554,9 @@
     function reportableIntervalURL(sourceIds) {
       var url = baseURL() + "/location/datum/interval?locationId=" + locationId;
       if (Array.isArray(sourceIds)) {
-        url += "&" + sourceIds.map(function(e) {
-          return "sourceIds=" + encodeURIComponent(e);
-        }).join("&");
+        url += "&sourceIds=" + sourceIds.map(function(e) {
+          return encodeURIComponent(e);
+        }).join(",");
       }
       return url;
     }
@@ -1571,7 +1581,7 @@
     }
     /**
 	 * Generate a SolarNet {@code /datum/list} URL.
-	 * 
+	 *
 	 * @param {Date} startDate The starting date for the query, or <em>null</em> to omit
 	 * @param {Date} endDate The ending date for the query, or <em>null</em> to omit
 	 * @param {String|Number} agg A supported aggregate type (e.g. Hour, Day, etc) or a minute precision Number
@@ -1593,9 +1603,9 @@
         url += "&aggregate=" + encodeURIComponent(agg);
       }
       if (Array.isArray(sourceIds)) {
-        url += "&" + sourceIds.map(function(e) {
-          return "sourceIds=" + encodeURIComponent(e);
-        }).join("&");
+        url += "&sourceIds=" + sourceIds.map(function(e) {
+          return encodeURIComponent(e);
+        }).join(",");
       }
       if (pagination !== undefined) {
         if (pagination.max > 0) {
@@ -1609,7 +1619,7 @@
     }
     /**
 	 * Generate a SolarNet {@code /datum/mostRecent} URL.
-	 * 
+	 *
 	 * @param {Array} sourceIds Array of source IDs to limit query to
 	 * @return {String} the URL to perform the most recent query with
 	 * @memberOf sn.api.loc.locationUrlHelper
@@ -1618,15 +1628,15 @@
     function mostRecentURL(sourceIds) {
       var url = baseURL() + "/location/datum/mostRecent?locationId=" + locationId;
       if (Array.isArray(sourceIds)) {
-        url += "&" + sourceIds.map(function(e) {
-          return "sourceIds=" + encodeURIComponent(e);
-        }).join("&");
+        url += "&sourceIds=" + sourceIds.map(function(e) {
+          return encodeURIComponent(e);
+        }).join(",");
       }
       return url;
     }
     /**
 	 * Get or set the location ID to use.
-	 * 
+	 *
 	 * @param {String} [value] the location ID to use
 	 * @return when used as a getter, the location ID, otherwise this object
 	 * @memberOf sn.api.loc.locationUrlHelper
@@ -1696,7 +1706,7 @@
   };
   /**
  * Register a custom function to generate URLs with {@link sn.api.loc.locationUrlHelper}.
- * 
+ *
  * @param {String} name The name to give the custom function. By convention the function
  *                      names should end with 'URL'.
  * @param {Function} func The function to add to sn.api.loc.locationUrlHelper instances.
