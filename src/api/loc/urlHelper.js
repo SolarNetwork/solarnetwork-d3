@@ -64,7 +64,7 @@ sn.api.loc.locationUrlHelper = function(location, configuration) {
 	function reportableIntervalURL(sourceIds) {
 		var url = (baseURL() +'/location/datum/interval?locationId=' +locationId);
 		if ( Array.isArray(sourceIds) ) {
-			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+			url += '&sourceIds=' + sourceIds.map(function(e) { return encodeURIComponent(e); }).join(',');
 		}
 		return url;
 	}
@@ -113,7 +113,7 @@ sn.api.loc.locationUrlHelper = function(location, configuration) {
 			url += '&aggregate=' + encodeURIComponent(agg);
 		}
 		if ( Array.isArray(sourceIds) ) {
-			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+			url += '&sourceIds=' + sourceIds.map(function(e) { return encodeURIComponent(e); }).join(',');
 		}
 		if ( pagination !== undefined ) {
 			if ( pagination.max > 0 ) {
@@ -137,7 +137,7 @@ sn.api.loc.locationUrlHelper = function(location, configuration) {
 	function mostRecentURL(sourceIds) {
 		var url = (baseURL() + '/location/datum/mostRecent?locationId=' + locationId);
 		if ( Array.isArray(sourceIds) ) {
-			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+			url += '&sourceIds=' + sourceIds.map(function(e) { return encodeURIComponent(e); }).join(',');
 		}
 		return url;
 	}

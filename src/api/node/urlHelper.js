@@ -60,7 +60,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 	function reportableIntervalURL(sourceIds) {
 		var url = (baseURL() +'/range/interval?nodeId=' +nodeId);
 		if ( Array.isArray(sourceIds) ) {
-			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+			url += '&sourceIds=' + sourceIds.map(function(e) { return encodeURIComponent(e); }).join(',');
 		}
 		return url;
 	}
@@ -107,7 +107,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 			url += '&aggregate=' + encodeURIComponent(agg);
 		}
 		if ( Array.isArray(sourceIds) && sourceIds.length > 0 ) {
-			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+			url += '&sourceIds=' + sourceIds.map(function(e) { return encodeURIComponent(e); }).join(',');
 		}
 		if ( pagination !== undefined ) {
 			if ( pagination.max > 0 ) {
@@ -130,7 +130,7 @@ sn.api.node.nodeUrlHelper = function(node, configuration) {
 	function mostRecentURL(sourceIds) {
 		var url = (baseURL() + '/datum/mostRecent?nodeId=' + nodeId);
 		if ( Array.isArray(sourceIds) ) {
-			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+			url += '&sourceIds=' + sourceIds.map(function(e) { return encodeURIComponent(e); }).join(',');
 		}
 		return url;
 	}
