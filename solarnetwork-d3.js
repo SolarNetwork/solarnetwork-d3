@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue, CryptoJS) {
   "use strict";
   var sn = {
-    version: "0.11.0"
+    version: "0.11.1"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -1043,17 +1043,18 @@
  * with <code>start</code> and <code>end</code> Date properties, using the given <code>endDate</code>
  * parameter as the basis for calculating the start as an offset, based on the given <code>aggregate</code>
  * level.
- * 
+ *
  * @param {string} aggregate - the aggregate level
- * @param {object} aggregateTimeCount - either a Number or an Object with Number properties named 
+ * @param {object} aggregateTimeCount - either a Number or an Object with Number properties named
  *                 <code>numXs</code> where <code>X</code> is the aggregate level, representing
  *                 the number of aggregate time units to include in the query
  * @param {Date} endDate - the end date
+ * @param {Date} minDate - an optional start date to restrict the result to
  * @returns {Object}
  * @since 0.0.4
  * @preserve
  */
-  function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate) {
+  function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate, minDate) {
     var end, start, timeUnit, timeCount, precision;
     function exclusiveEndDate(time, date) {
       var result = time.utc.ceil(date);
@@ -1109,6 +1110,9 @@
       timeUnit = "day";
       end = exclusiveEndDate(d3.time.hour, endDate);
       start = d3.time.day.utc.offset(d3.time.hour.utc.floor(end), -timeCount);
+    }
+    if (minDate && start < minDate) {
+      start = minDate;
     }
     return {
       start: start,
