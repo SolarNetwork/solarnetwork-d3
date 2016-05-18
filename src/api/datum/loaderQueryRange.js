@@ -7,9 +7,9 @@ sn.api.datum.loaderQueryRange = sn_api_datum_loaderQueryRange;
  * with <code>start</code> and <code>end</code> Date properties, using the given <code>endDate</code>
  * parameter as the basis for calculating the start as an offset, based on the given <code>aggregate</code>
  * level.
- * 
+ *
  * @param {string} aggregate - the aggregate level
- * @param {object} aggregateTimeCount - either a Number or an Object with Number properties named 
+ * @param {object} aggregateTimeCount - either a Number or an Object with Number properties named
  *                 <code>numXs</code> where <code>X</code> is the aggregate level, representing
  *                 the number of aggregate time units to include in the query
  * @param {Date} endDate - the end date
@@ -24,7 +24,7 @@ function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate, m
 		timeUnit,
 		timeCount,
 		precision;
-	
+
 	function exclusiveEndDate(time, date) {
 		var result = time.utc.ceil(date);
 		if ( result.getTime() === date.getTime() ) {
@@ -33,7 +33,7 @@ function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate, m
 		}
 		return result;
 	}
-	
+
 	function timeCountValue(propName) {
 		var result;
 		if ( isNaN(Number(aggregateTimeCount)) ) {
@@ -50,7 +50,7 @@ function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate, m
 		}
 		return result;
 	}
-	
+
 	function precisionValue(agg) {
 		var result = 10;
 		if ( agg.search(/^Five/) === 0 ) {
@@ -60,7 +60,7 @@ function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate, m
 		}
 		return result;
 	}
-	
+
 	if ( aggregate.search(/Minute$/) >= 0 ) {
 		timeCount = timeCountValue('numHours');
 		timeUnit = 'hour';
@@ -89,9 +89,9 @@ function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate, m
 		start = minDate;
 	}
 	return {
-		start : start, 
-		end : end, 
-		timeUnit : timeUnit, 
+		start : start,
+		end : end,
+		timeUnit : timeUnit,
 		timeCount : timeCount
 	};
 }
