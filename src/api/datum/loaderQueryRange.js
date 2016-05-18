@@ -13,11 +13,12 @@ sn.api.datum.loaderQueryRange = sn_api_datum_loaderQueryRange;
  *                 <code>numXs</code> where <code>X</code> is the aggregate level, representing
  *                 the number of aggregate time units to include in the query
  * @param {Date} endDate - the end date
+ * @param {Date} minDate - an optional start date to restrict the result to
  * @returns {Object}
  * @since 0.0.4
  * @preserve
  */
-function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate) {
+function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate, minDate) {
 	var end,
 		start,
 		timeUnit,
@@ -83,6 +84,9 @@ function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate) {
 		timeUnit = 'day';
 		end = exclusiveEndDate(d3.time.hour, endDate);
 		start = d3.time.day.utc.offset(d3.time.hour.utc.floor(end), -timeCount);
+	}
+	if ( minDate && start < minDate ) {
+		start = minDate;
 	}
 	return {
 		start : start, 
