@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue, CryptoJS) {
   "use strict";
   var sn = {
-    version: "0.11.0"
+    version: "0.11.1"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -1043,17 +1043,18 @@
  * with <code>start</code> and <code>end</code> Date properties, using the given <code>endDate</code>
  * parameter as the basis for calculating the start as an offset, based on the given <code>aggregate</code>
  * level.
- * 
+ *
  * @param {string} aggregate - the aggregate level
- * @param {object} aggregateTimeCount - either a Number or an Object with Number properties named 
+ * @param {object} aggregateTimeCount - either a Number or an Object with Number properties named
  *                 <code>numXs</code> where <code>X</code> is the aggregate level, representing
  *                 the number of aggregate time units to include in the query
  * @param {Date} endDate - the end date
+ * @param {Date} minDate - an optional start date to restrict the result to
  * @returns {Object}
  * @since 0.0.4
  * @preserve
  */
-  function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate) {
+  function sn_api_datum_loaderQueryRange(aggregate, aggregateTimeCount, endDate, minDate) {
     var end, start, timeUnit, timeCount, precision;
     function exclusiveEndDate(time, date) {
       var result = time.utc.ceil(date);
@@ -1109,6 +1110,9 @@
       timeUnit = "day";
       end = exclusiveEndDate(d3.time.hour, endDate);
       start = d3.time.day.utc.offset(d3.time.hour.utc.floor(end), -timeCount);
+    }
+    if (minDate && start < minDate) {
+      start = minDate;
     }
     return {
       start: start,
@@ -6395,10 +6399,9 @@
 	 * @preserve
 	 */
     function authURLPath(url, data) {
-      var a = document.createElement("a");
-      a.href = url;
-      var path = a.pathname;
-      var params = parseURLQueryTerms(data === undefined ? a.search : data);
+      var a = URI.parse(url);
+      var path = a.path;
+      var params = parseURLQueryTerms(data === undefined ? a.query : data);
       var sortedKeys = [], key = undefined;
       var i, len;
       var first = true;
@@ -6620,7 +6623,7 @@
   };
   /**
  * Simple implementation of a 2D CSS transform matrix.
- * 
+ *
  * @class
  * @returns {sn.ui.Matrix}
  * @preserve
@@ -6649,7 +6652,7 @@
   sn.ui.Matrix.prototype = {
     constructor: sn.ui.Matrix,
     supportDefaults: function() {
-      var divStyle = document.createElement("div").style;
+      var divStyle = global && global.document ? global.document.createElement("div").style : undefined;
       var suffix = "Transform";
       var testProperties = [ "Webkit" + suffix, "O" + suffix, "ms" + suffix, "Moz" + suffix ];
       var eventProperties = [ "webkitTransitionEnd", "oTransitionEnd", "transitionend", "transitionend" ];
@@ -6657,17 +6660,19 @@
       var transitionTransform = [ "-webkit-transform", "-o-transform", "transform", "-moz-transform" ];
       var tProp = "Transform", trProp = "Transition", trTransform = "transform", trEndEvent = "transitionEnd";
       var i = testProperties.length;
-      while (i--) {
-        if (testProperties[i] in divStyle) {
-          tProp = testProperties[i];
-          trProp = transitionProperties[i];
-          trTransform = transitionTransform[i];
-          trEndEvent = eventProperties[i];
-          break;
+      if (divStyle) {
+        while (i--) {
+          if (testProperties[i] in divStyle) {
+            tProp = testProperties[i];
+            trProp = transitionProperties[i];
+            trTransform = transitionTransform[i];
+            trEndEvent = eventProperties[i];
+            break;
+          }
         }
       }
       return {
-        use3d: window.devicePixelRatio === undefined ? false : window.devicePixelRatio > 1,
+        use3d: global && global.devicePixelRatio !== undefined ? window.devicePixelRatio > 1 : false,
         tProp: tProp,
         trProp: trProp,
         trTransform: trTransform,
@@ -6676,7 +6681,7 @@
     }(),
     /**
 	 * Generate a CSS matrix3d() function string from the current matrix.
-	 * 
+	 *
 	 * @returns {String} the CSS matrix3d() function
 	 * @preserve
 	 */
@@ -6685,7 +6690,7 @@
     },
     /**
 	 * Generate a CSS matrix() function string from the current matrix.
-	 * 
+	 *
 	 * @returns {String} the CSS matrix() function
 	 * @preserve
 	 */
@@ -6694,7 +6699,7 @@
     },
     /**
 	 * Set the z-axis rotation of the matrix.
-	 * 
+	 *
 	 * @param {Number} angle the rotation angle, in radians
 	 * @preserve
 	 */
@@ -6716,7 +6721,7 @@
     },
     /**
 	 * Set the current 2D translate of the matrix.
-	 * 
+	 *
 	 * @param {Number} x the x offset
 	 * @param {Number} y the y offset
 	 * @preserve
@@ -6727,7 +6732,7 @@
     },
     /**
 	 * Append a 2D translate to the current matrix.
-	 * 
+	 *
 	 * @param {Number} x the x offset
 	 * @param {Number} y the y offset
 	 * @preserve
@@ -6738,7 +6743,7 @@
     },
     /**
 	 * Get the current 2D translation value.
-	 * 
+	 *
 	 * @returns {Object} object with x,y Number properties
 	 * @preserve
 	 */
@@ -6750,7 +6755,7 @@
     },
     /**
 	 * Get the 2D distance between a location and this matrix's translation.
-	 * 
+	 *
 	 * @param location a location object, with x,y Number properties
 	 * @returns {Number} the calculated distance
 	 * @preserve
@@ -6760,12 +6765,12 @@
     },
     /**
 	 * Apply the matrix transform to an element.
-	 * 
-	 * <p>If {@code support.use3d} is <em>true</em>, the {@link #toMatrix3D()} transform 
-	 * is used, otherwise {@link #toMatrix2D()} is used. Found that legibility of 
+	 *
+	 * <p>If {@code support.use3d} is <em>true</em>, the {@link #toMatrix3D()} transform
+	 * is used, otherwise {@link #toMatrix2D()} is used. Found that legibility of
 	 * text was too blurry on older displays when 3D transform was applied,
 	 * but 3D transform provide better performance on hi-res displays.</p>
-	 * 
+	 *
 	 * @param {Element} elm the element to apply the transform to
 	 * @preserve
 	 */
@@ -6775,7 +6780,7 @@
     },
     /**
 	 * Apply a one-time animation callback listener.
-	 * 
+	 *
 	 * @param elm the element to add the one-time listener to
 	 * @param finished
 	 * @preserve
@@ -6793,13 +6798,13 @@
     },
     /**
 	 * Apply the matrix transform to an element, with an "ease out" transition.
-	 * 
+	 *
 	 * <p>Calls {@link #apply(elm)} internally.</p>
-	 * 
+	 *
 	 * @param {Element} elm the element to apply the transform to
 	 * @param {String} timing the CSS timing function to use
 	 * @param {String} duration the CSS duration to use
-	 * @param {Function} finished an optional callback function to execute when 
+	 * @param {Function} finished an optional callback function to execute when
 	 * the animation completes
 	 * @preserve
 	 */
@@ -6817,11 +6822,11 @@
     },
     /**
 	 * Apply the matrix transform to an element, with an "ease out" transition.
-	 * 
+	 *
 	 * <p>Calls {@link #animate(elm)} internally.</p>
-	 * 
+	 *
 	 * @param {Element} elm the element to apply the transform to
-	 * @param {Function} finished an optional callback function to execute when 
+	 * @param {Function} finished an optional callback function to execute when
 	 * the animation completes
 	 * @preserve
 	 */
@@ -6830,11 +6835,11 @@
     },
     /**
 	 * Apply the matrix transform to an element, with an "ease in" transition.
-	 * 
+	 *
 	 * <p>Calls {@link #animate(elm)} internally.</p>
-	 * 
+	 *
 	 * @param {Element} elm the element to apply the transform to
-	 * @param {Function} finished an optional callback function to execute when 
+	 * @param {Function} finished an optional callback function to execute when
 	 * the animation completes
 	 * @preserve
 	 */
@@ -6843,8 +6848,8 @@
     },
     /**
 	 * Test if 3D matrix transforms are being used.
-	 * 
-	 * @returns {Boolean} <em>true</em> if 3D transformations matrix are being used, 
+	 *
+	 * @returns {Boolean} <em>true</em> if 3D transformations matrix are being used,
 	 *                    <em>false</em> if 2D transformations are being used
 	 * @preserve
 	 */
@@ -6853,8 +6858,8 @@
     },
     /**
 	 * Set which transformation matrix style should be used: 3D or 2D.
-	 * 
-	 * @param {Boolean} value <em>true</em> if 3D transformations matrix should be used, 
+	 *
+	 * @param {Boolean} value <em>true</em> if 3D transformations matrix should be used,
 	 *                    <em>false</em> if 2D transformations should be used
 	 * @preserve
 	 */
