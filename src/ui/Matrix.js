@@ -39,7 +39,7 @@ sn.ui.Matrix.prototype = {
 	
 	supportDefaults : (function() {
 		// adapted from jquery.transform2d.js
-		var divStyle = document.createElement("div").style;
+		var divStyle = (global && global.document ? global.document.createElement("div").style : undefined);
 		var suffix = "Transform";
 		var testProperties = [
 		    "Webkit" + suffix,
@@ -55,18 +55,20 @@ sn.ui.Matrix.prototype = {
 			trTransform = "transform",
 			trEndEvent = "transitionEnd";
 		var i = testProperties.length;
-		while ( i-- ) {
-			if ( testProperties[i] in divStyle ) {
-				tProp = testProperties[i];
-				trProp = transitionProperties[i];
-				trTransform = transitionTransform[i];
-				trEndEvent = eventProperties[i];
-				break;
+		if ( divStyle ) {
+			while ( i-- ) {
+				if ( testProperties[i] in divStyle ) {
+					tProp = testProperties[i];
+					trProp = transitionProperties[i];
+					trTransform = transitionTransform[i];
+					trEndEvent = eventProperties[i];
+					break;
+				}
 			}
 		}
 		
 		return {
-			use3d : (window.devicePixelRatio === undefined ? false : window.devicePixelRatio > 1),
+			use3d : (global && global.devicePixelRatio !== undefined ? window.devicePixelRatio > 1 : false),
 			tProp : tProp,
 			trProp : trProp,
 			trTransform : trTransform,

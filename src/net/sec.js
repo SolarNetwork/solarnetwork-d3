@@ -178,12 +178,11 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	 * @preserve
 	 */
 	function authURLPath(url, data) {
-		var a = document.createElement('a');
-		a.href = url;
-		var path = a.pathname;
+		var a = URI.parse(url);
+		var path = a.path;
 
 		// handle query params, which must be sorted
-		var params = parseURLQueryTerms(data === undefined ? a.search : data);
+		var params = parseURLQueryTerms(data === undefined ? a.query : data);
 		var sortedKeys = [], key = undefined;
 		var i, len;
 		var first = true;
