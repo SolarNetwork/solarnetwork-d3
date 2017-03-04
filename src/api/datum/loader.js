@@ -86,6 +86,7 @@ sn.api.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 				nextOffset;
 			if ( error ) {
 				sn.log('Error requesting data for {0}: {2}', urlHelper.keyDescription(), error);
+				requestCompletionHandler(error);
 				return;
 			}
 			dataArray = dataExtractor(json);
