@@ -9,18 +9,21 @@ import "net";
  * @param {String} [apiToken] - An initial token to use.
  * @param {String} [apiTokenSecret] - An initial token secret to use.
  * @returns {sn.net.securityHelper}
+ * @require uri-js https://github.com/garycourt/uri-js
  * @preserve
  */
 sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	'use strict';
 	var that = json;
 
+	var kFormUrlEncodedContentTypeRegex = /^application\/x-www-form-urlencoded/i;
+
 	// our in-memory credentials
-	var cred = {token: apiToken, secret: apiTokenSecret};
+	var cred = {token: apiToken, secret: apiTokenSecret, signingKey: null, signingKeyExpiry: null};
 
 	// setup core properties
 	Object.defineProperties(that, {
-		version								: { value : '1.2.0' },
+		version								: { value : '1.3.0' },
 		hasTokenCredentials					: { value : hasTokenCredentials },
 		token								: { value : token },
 		secret								: { value : secret },
@@ -28,7 +31,6 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 		clearSecret 						: { value : clearSecret },
 		generateAuthorizationHeaderValue 	: { value : generateAuthorizationHeaderValue },
 		parseURLQueryTerms 					: { value : parseURLQueryTerms },
-		authURLPath 						: { value : authURLPath },
 		json 								: { value : json }
 	});
 
@@ -91,46 +93,64 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	}
 
 	/**
-	 * Test if a Content-MD5 hash should be included in the request, based on the
+	 * Test if a Digest header should be included in the request, based on the
 	 * request content type.
 	 *
 	 * @param {String} contentType the content type
-	 * @returns {Boolean} <em>true</em> if including the Content-MD5 hash is appropriate
+	 * @returns {Boolean} <em>true</em> if including the Digest hash is appropriate
 	 */
-	function shouldIncludeContentMD5(contentType) {
-		// we don't send Content-MD5 for form data, because server treats this as URL parameters
-		return (contentType !== null && contentType.indexOf('application/x-www-form-urlencoded') < 0);
+	function shouldIncludeContentDigest(contentType) {
+		// we don't send Digest for form data, because server treats this as URL parameters
+		return (contentType && contentType.match(kFormUrlEncodedContentTypeRegex));
 	}
 
 	/**
-	 * Generate the authorization header value for a set of request parameters.
-	 *
-	 * <p>This returns just the authorization header value, without the scheme. For
-	 * example this might return a value like
-	 * <code>a09sjds09wu9wjsd9uya:6U2NcYHz8jaYhPd5Xr07KmfZbnw=</code>. To use
-	 * as a valid <code>Authorization</code> header, you must still prefix the
-	 * returned value with <code>SolarNetworkWS</code> (with a space between
-	 * that prefix and the associated value).</p>
+	 * Generate the canonical request message for a set of request parameters.
 	 *
 	 * @param {Object} params the request parameters
 	 * @param {String} params.method the HTTP request method
-	 * @param {String} params.data the HTTP request body
-	 * @param {String} params.date the formatted HTTP request date
-	 * @param {String} params.path the SolarNetworkWS canonicalized path value
-	 * @param {String} params.token the authentication token
-	 * @param {String} params.secret the authentication token secret
-	 * @return {String} the authorization header value
+	 * @param {Object} params.uri a parsed URI object for the request
+	 * @param {String} params.queryParams the canonical query parameters string
+	 * @param {Object} params.headers the canonical headers object
+	 * @param {Object} params.bodyDigest the CryptoJS body content digest
+	 * @return {String} the message
 	 * @preserve
 	 */
-	function generateAuthorizationHeaderValue(params) {
+	function generateCanonicalRequestMessage(params) {
 		var msg =
 			(params.method === undefined ? 'GET' : params.method.toUpperCase()) + '\n'
-			+(params.data !== undefined && shouldIncludeContentMD5(params.contentType) ? CryptoJS.MD5(params.data) : '') + '\n'
-			+(params.contentType === undefined ? '' : params.contentType) + '\n'
-			+params.date +'\n'
-			+params.path;
-		var hash = CryptoJS.HmacSHA1(msg, (params.secret || ''));
-		var authHeader = params.token +':' +CryptoJS.enc.Base64.stringify(hash);
+			+params.uri.path +'\n'
+			+params.queryParams +'\n';
+		params.headers.headerNames.forEach(function(name) {
+			msg += name + ':' +params.headers.headers[name] + '\n';
+		});
+		msg += params.headers.headerNames.join(';') +'\n';
+		msg += CryptoJS.enc.Hex.stringify(params.bodyDigest);
+		return msg;
+	}
+
+	function generateSigningMessage(date, canonRequestMsg) {
+		var msg = 'SNWS2-HMAC-SHA256\n'
+			+iso8601Date(date, true) +'\n'
+			+CryptoJS.enc.Hex.stringify(CryptoJS.SHA256(canonRequestMsg));
+		return msg;
+	}
+
+	/**
+	 * Generate the V2 HTTP Authorization header.
+	 *
+	 * @param {String} token the SN token ID
+	 * @param {Array} signedHeaders the sorted array of signed header names
+	 * @param {Object} signKey the key to encrypt the signature with
+	 * @param {String} signingMsg the message to sign
+	 * @return {String} the HTTP header value
+	 * @preserve
+	 */
+	function generateAuthorizationHeaderValue(signedHeaders, signKey, signingMsg) {
+		var signature = CryptoJS.HmacSHA256(signingMsg, signKey);
+		var authHeader = 'SNWS2 Credential=' +cred.token
+			+',SignedHeaders=' +signedHeaders.join(';')
+			+',Signature=' +CryptoJS.enc.Hex.stringify(signature);
 		return authHeader;
 	}
 
@@ -156,7 +176,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 				search = search.substring(1);
 			}
 			pairs = search.split('&');
-			for ( i = 0, len = pairs.length; i < len; i++ ) {
+			for ( i = 0, len = pairs.length; i < len; i += 1 ) {
 				pair = pairs[i].split('=', 2);
 				if ( pair.length === 2 ) {
 					params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
@@ -166,50 +186,107 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 		return params;
 	}
 
-	/**
-	 * Generate the SolarNetworkWS path required by the authorization header value.
-	 *
-	 * <p>This method will parse the given URL and then apply the path canonicalization
-	 * rules defined by the SolarNetworkWS scheme.</p>
-	 *
-	 * @param {String} url the request URL
-	 * @return {String} path the canonicalized path value to use in the SolarNetworkWS
-	 *                       authorization header value
-	 * @preserve
-	 */
-	function authURLPath(url, data) {
-		var a = URI.parse(url);
-		var path = a.path;
+	function _encodeURIComponent(str) {
+	  return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
+		return '%' + c.charCodeAt(0).toString(16);
+	  });
+	}
 
-		// handle query params, which must be sorted
-		var params = parseURLQueryTerms(data === undefined ? a.query : data);
-		var sortedKeys = [], key = undefined;
-		var i, len;
-		var first = true;
-
-		// work around IE bug https://connect.microsoft.com/IE/Feedback/Details/1002846
-		if ( path.length > 0 && path.charAt(0) !== '/' ) {
-			path = '/' + path;
-		}
+	function canonicalQueryParameters(uri, data, contentType) {
+		var params = parseURLQueryTerms(data && contentType.match(kFormUrlEncodedContentTypeRegex)
+			? data : uri.query);
+		var sortedKeys = [],
+			key,
+			i,
+			len,
+			first = true,
+			result;
 
 		for ( key in params ) {
 			sortedKeys.push(key);
 		}
 		sortedKeys.sort();
-		if ( sortedKeys.length > 0 ) {
-			path += '?';
-			for ( i = 0, len = sortedKeys.length; i < len; i++ ) {
-				if ( first ) {
-					first = false;
-				} else {
-					path += '&';
-				}
-				path +=  sortedKeys[i];
-				path += '=';
-				path += params[sortedKeys[i]];
+		for ( i = 0, len = sortedKeys.length; i < len; i += 1 ) {
+			if ( first ) {
+				first = false;
+				result = '';
+			} else {
+				result += '&';
 			}
+			key = sortedKeys[i];
+			result +=  _encodeURIComponent(key);
+			result += '=';
+			result += _encodeURIComponent(params[key]);
 		}
-		return path;
+		return result;
+	}
+
+	/**
+	 * Create an object with the canonical header names and their associated values.
+	 *
+	 * @param {Object} uri           a parsed URI object for the request
+	 * @param {String} contentType   the request content type
+	 * @param {Date} date            the request date
+	 * @param {Object} contentSHA256 the CryptoJS digest object of the request body content
+	 * @return {Object} An object with a sorted <code>headerNames</code> property array of strings, and
+	 *                  a <code>headers</code> object of the header name values for keys and
+	 *                  associated header values as values.
+	 */
+	function canonicalHeaders(uri, contentType, date, contentSHA256) {
+		var result = {
+			headerNames : ['host', 'x-sn-date'],
+			headers : {
+				'host' : uri.host + (uri.port && uri.port !== 80 && uri.port !== 443 ? ':'+uri.port : ''),
+				'x-sn-date' : date.toUTCString()
+			}
+		};
+		if ( shouldIncludeContentDigest(contentType) ) {
+			result.headerNames.push('content-type');
+			result.headers['content-type'] = contentType;
+			result.headerNames.push('digest');
+			result.headers['digest'] = 'sha-256='+CryptoJS.enc.Base64.stringify(contentSHA256);
+		}
+		result.headerNames.sort();
+		return result;
+	}
+
+	function bodyContentSHA256(data, contentType) {
+		return CryptoJS.SHA256(data && !contentType.match(kFormUrlEncodedContentTypeRegex)
+			? data
+			: '');
+	}
+
+	function iso8601Date(date, includeTime) {
+		return ''+date.getUTCFullYear()
+				+(date.getUTCMonth() < 9 ? '0' : '') +(date.getUTCMonth()+1)
+				+(date.getUTCDate() < 10 ? '0' : '') + date.getUTCDate()
+				+(includeTime ?
+					'T'
+					+(date.getUTCHours() < 10 ? '0' : '') + date.getUTCHours()
+					+(date.getUTCMinutes() < 10 ? '0' : '') + date.getUTCMinutes()
+					+(date.getUTCSeconds() < 10 ? '0' : '') +date.getUTCSeconds()
+					+'Z'
+					: '');
+	}
+
+	function signingKey(date) {
+		var dateString,
+			key = cred.signingKey,
+			expireDate;
+		date = date || new Date();
+		if ( !key || date.getTime() > cred.signingKeyExpiry ) {
+			dateString = iso8601Date(date);
+			key = CryptoJS.HmacSHA256('snws2_request', CryptoJS.HmacSHA256(dateString, 'SNWS2' + cred.secret));
+			cred.signingKey = key;
+
+			expireDate = new Date(date);
+			expireDate.setUTCHours(0);
+			expireDate.setUTCMinutes(0);
+			expireDate.setUTCSeconds(0);
+			expireDate.setUTCMilliseconds(0);
+			cred.signingKeyExpiry = expireDate.getTime() + (7 * 24 * 60 * 60 * 1000);
+		}
+		return key;
 	}
 
 	/**
@@ -271,31 +348,36 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 			xhr.header('Content-Type', contentType);
 		}
 		xhr.on('beforesend', function(request) {
-			// get a date, which we must include as a header as well as include in the
-			// generated authorization hash
-			var date = new Date().toUTCString();
+			var date = new Date();
 
-			// construct our canonicalized path value from our URL
-			var path = authURLPath(url,
-				(contentType !== undefined && contentType.indexOf('application/x-www-form-urlencoded') === 0 ? data : undefined));
+			var uri = URI.parse(url);
 
-			// generate the authorization hash value now (cryptographically signing our request)
-			var auth = generateAuthorizationHeaderValue({
+			var canonQueryParams = canonicalQueryParameters(uri, data, contentType);
+
+			var bodyContentDigest = bodyContentSHA256(data, contentType);
+
+			var canonHeaders = canonicalHeaders(uri, contentType, date, bodyContentDigest);
+
+			var canonRequestMsg = generateCanonicalRequestMessage({
 				method: method,
-				date: date,
-				path: path,
-				token: cred.token,
-				secret: cred.secret,
-				data: data,
-				contentType: contentType
+				uri: uri,
+				queryParams : canonQueryParams,
+				headers : canonHeaders,
+				bodyDigest: bodyContentDigest
 			});
 
+			var signingMsg = generateSigningMessage(date, canonRequestMsg);
+
+			var signKey = signingKey(date);
+
+			var auth = generateAuthorizationHeaderValue(canonHeaders.headerNames, signKey, signingMsg);
+
 			// set the headers on our request
-			if ( data !== undefined && shouldIncludeContentMD5(contentType) ) {
-				request.setRequestHeader('Content-MD5', CryptoJS.MD5(data));
+			request.setRequestHeader('Authorization', auth);
+			if ( bodyContentDigest && shouldIncludeContentDigest(contentType) ) {
+				request.setRequestHeader('Digest', canonHeaders.headers['digest']);
 			}
-			request.setRequestHeader('X-SN-Date', date);
-			request.setRequestHeader('Authorization', 'SolarNetworkWS ' +auth);
+			request.setRequestHeader('X-SN-Date', canonHeaders.headers['x-sn-date']);
 		});
 
 		// register a load handler always, just so one is present
