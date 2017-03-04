@@ -948,6 +948,7 @@
         var dataArray, nextOffset;
         if (error) {
           sn.log("Error requesting data for {0}: {2}", urlHelper.keyDescription(), error);
+          requestCompletionHandler(error);
           return;
         }
         dataArray = dataExtractor(json);
