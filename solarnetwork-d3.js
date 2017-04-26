@@ -6346,7 +6346,7 @@
 	 * @preserve
 	 */
     function generateCanonicalRequestMessage(params) {
-      var msg = (params.method === undefined ? "GET" : params.method.toUpperCase()) + "\n" + params.uri.path + "\n" + params.queryParams + "\n";
+      var msg = (params.method === undefined ? "GET" : params.method.toUpperCase()) + "\n" + params.uri.path + "\n" + (params.queryParams ? params.queryParams : "") + "\n";
       params.headers.headerNames.forEach(function(name) {
         msg += name + ":" + params.headers.headers[name] + "\n";
       });
