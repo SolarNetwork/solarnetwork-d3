@@ -6605,7 +6605,7 @@
       xhr.on("beforesend", function(request) {
         var authorization = computeAuthorization(url, method, data, contentType, new Date());
         request.setRequestHeader("Authorization", authorization.header);
-        if (bodyContentDigest && shouldIncludeContentDigest(contentType)) {
+        if (authorization.bodyContentDigest && shouldIncludeContentDigest(contentType)) {
           request.setRequestHeader("Digest", authorization.canonicalHeaders.headers["digest"]);
         }
         request.setRequestHeader("X-SN-Date", authorization.canonicalHeaders.headers["x-sn-date"]);

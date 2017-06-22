@@ -423,7 +423,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 
 			// set the headers on our request
 			request.setRequestHeader('Authorization', authorization.header);
-			if ( bodyContentDigest && shouldIncludeContentDigest(contentType) ) {
+			if ( authorization.bodyContentDigest && shouldIncludeContentDigest(contentType) ) {
 				request.setRequestHeader('Digest', authorization.canonicalHeaders.headers['digest']);
 			}
 			request.setRequestHeader('X-SN-Date', authorization.canonicalHeaders.headers['x-sn-date']);
