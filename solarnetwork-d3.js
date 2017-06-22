@@ -9,64 +9,14 @@
 })(this, function(colorbrewer, d3, queue, CryptoJS, URI) {
   "use strict";
   var sn = {
-    version: "0.13.0"
+    version: "0.14.0"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
   sn.api.control = {};
   sn.api.user = {};
   sn.api.node = {};
-  var global = function() {
-    if (typeof self !== "undefined") {
-      return self;
-    }
-    if (typeof global !== "undefined") {
-      return global;
-    }
-    return new Function("return this")();
-  }();
-  sn.net = {};
-  sn.net.parseURLQueryTerms = sn_net_parseURLQueryTerms;
-  /**
- * Parse the query portion of a URL string, and return a parameter object for the
- * parsed key/value pairs.
- * 
- * <p>Multiple parameters of the same name will be stored as an array on the returned object.</p>
- * 
- * @param {String} search the query portion of the URL, which may optionally include 
- *                        the leading '?' character
- * @return {Object} the parsed query parameters, as a parameter object
- * @preserve
- */
-  function sn_net_parseURLQueryTerms(search) {
-    var params = {};
-    var pairs;
-    var pair;
-    var i, len, k, v;
-    if (search !== undefined && search.length > 0) {
-      if (search.match(/^\?/)) {
-        search = search.substring(1);
-      }
-      pairs = search.split("&");
-      for (i = 0, len = pairs.length; i < len; i++) {
-        pair = pairs[i].split("=", 2);
-        if (pair.length === 2) {
-          k = decodeURIComponent(pair[0]);
-          v = decodeURIComponent(pair[1]);
-          if (params[k]) {
-            if (!Array.isArray(params[k])) {
-              params[k] = [ params[k] ];
-            }
-            params[k].push(v);
-          } else {
-            params[k] = v;
-          }
-        }
-      }
-    }
-    return params;
-  }
-  var sn_env = {
+  var sn_config = {
     debug: false,
     host: "data.solarnetwork.net",
     tls: function() {
@@ -76,49 +26,20 @@
     solarUserPath: "/solaruser",
     secureQuery: false
   };
-  function sn_env_setDefaultEnv(defaults) {
-    var prop;
-    for (prop in defaults) {
-      if (defaults.hasOwnProperty(prop)) {
-        if (sn_env[prop] === undefined) {
-          sn_env[prop] = defaults[prop];
-        }
-      }
-    }
+  sn.config = sn_config;
+  function sn_config_getConfig() {
+    return sn_config;
   }
-  function sn_env_setEnv(environment) {
-    var prop;
-    for (prop in environment) {
-      if (environment.hasOwnProperty(prop)) {
-        sn_env[prop] = environment[prop];
-      }
-    }
-  }
-  sn.env = sn_env;
-  sn.setEnv = sn_env_setEnv;
-  sn.setDefaultEnv = sn_env_setDefaultEnv;
-  if (global !== undefined && global.location !== undefined && global.location.search !== undefined) {
-    sn_env_setEnv(sn_net_parseURLQueryTerms(global.location.search));
-  }
-  sn.config = {
-    debug: false,
-    host: "data.solarnetwork.net",
-    tls: function() {
-      return global !== undefined && global.location !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
-    }(),
-    path: "/solarquery",
-    solarUserPath: "/solaruser",
-    secureQuery: false
-  };
   sn.util = {
     arraysAreEqual: sn_util_arraysAreEqual,
     copy: sn_util_copy,
     copyAll: sn_util_copyAll,
+    merge: sn_util_merge,
     superMethod: sn_util_superMethod
   };
   /**
  * Copy the enumerable own properties of `obj1` onto `obj2` and return `obj2`.
- * 
+ *
  * @param {Object} obj1 - The object to copy enumerable properties from.
  * @param {Object} [obj2] - The optional object to copy the properties to. If not
  *                          provided a new object will be created.
@@ -145,7 +66,7 @@
   }
   /**
  * Copy the enumerable and non-enumerable own properties of `obj` onto `obj2` and return `obj2`.
- * 
+ *
  * @param {Object} obj1 - The object to copy enumerable properties from.
  * @param {Object} [obj2] - The optional object to copy the properties to. If not
  *                          provided a new object will be created.
@@ -165,6 +86,33 @@
         Object.defineProperty(obj2, key, desc);
       } else {
         obj2[key] = obj1[key];
+      }
+    }
+    return obj2;
+  }
+  /**
+ * Copy the enumerable own properties of `obj1` that don't already exist on `obj2` into `obj2` and return `obj2`.
+ *
+ * @param {Object} obj1 - The object to copy enumerable properties from.
+ * @param {Object} [obj2] - The optional object to copy the properties to. If not
+ *                          provided a new object will be created.
+ * @returns {Object} The object whose properties were copied to.
+ * @since 0.14.0
+ * @preserve
+ */
+  function sn_util_merge(obj1, obj2) {
+    var prop, desc;
+    if (obj2 === undefined) {
+      obj2 = {};
+    }
+    for (prop in obj1) {
+      if (obj1.hasOwnProperty(prop) && obj2[prop] === undefined) {
+        desc = Object.getOwnPropertyDescriptor(obj1, prop);
+        if (desc) {
+          Object.defineProperty(obj2, prop, desc);
+        } else {
+          obj2[prop] = obj1[prop];
+        }
       }
     }
     return obj2;
@@ -198,7 +146,7 @@
   }
   /**
  * Get a proxy method for a "super" class' method on the `this` objct.
- * 
+ *
  * @param {String} name - The name of the method to get a proxy for.
  * @returns {Function} A function that calls the `name` function of the `this` object.
  * @since 0.0.4
@@ -879,6 +827,7 @@
       console.log(sn.format.fmt.apply(this, arguments));
     }
   }
+  sn.net = {};
   /**
  * Load data for a set of source IDs, date range, and aggregate level using the
  * {@code dateTimeListURL} endpoint. This object is designed
@@ -6057,6 +6006,80 @@
     result.displaySourceObjects = displayToSourceObjects;
     return result;
   }
+  var global = function() {
+    if (typeof self !== "undefined") {
+      return self;
+    }
+    if (typeof global !== "undefined") {
+      return global;
+    }
+    return new Function("return this")();
+  }();
+  sn.net.parseURLQueryTerms = sn_net_parseURLQueryTerms;
+  /**
+ * Parse the query portion of a URL string, and return a parameter object for the
+ * parsed key/value pairs.
+ * 
+ * <p>Multiple parameters of the same name will be stored as an array on the returned object.</p>
+ * 
+ * @param {String} search the query portion of the URL, which may optionally include 
+ *                        the leading '?' character
+ * @return {Object} the parsed query parameters, as a parameter object
+ * @preserve
+ */
+  function sn_net_parseURLQueryTerms(search) {
+    var params = {};
+    var pairs;
+    var pair;
+    var i, len, k, v;
+    if (search !== undefined && search.length > 0) {
+      if (search.match(/^\?/)) {
+        search = search.substring(1);
+      }
+      pairs = search.split("&");
+      for (i = 0, len = pairs.length; i < len; i++) {
+        pair = pairs[i].split("=", 2);
+        if (pair.length === 2) {
+          k = decodeURIComponent(pair[0]);
+          v = decodeURIComponent(pair[1]);
+          if (params[k]) {
+            if (!Array.isArray(params[k])) {
+              params[k] = [ params[k] ];
+            }
+            params[k].push(v);
+          } else {
+            params[k] = v;
+          }
+        }
+      }
+    }
+    return params;
+  }
+  var sn_env = sn_util_copy(sn_config_getConfig(), {});
+  function sn_env_setDefaultEnv(defaults) {
+    var prop;
+    for (prop in defaults) {
+      if (defaults.hasOwnProperty(prop)) {
+        if (sn_env[prop] === undefined) {
+          sn_env[prop] = defaults[prop];
+        }
+      }
+    }
+  }
+  function sn_env_setEnv(environment) {
+    var prop;
+    for (prop in environment) {
+      if (environment.hasOwnProperty(prop)) {
+        sn_env[prop] = environment[prop];
+      }
+    }
+  }
+  sn.env = sn_env;
+  sn.setEnv = sn_env_setEnv;
+  sn.setDefaultEnv = sn_env_setDefaultEnv;
+  if (global !== undefined && global.location !== undefined && global.location.search !== undefined) {
+    sn_env_setEnv(sn_net_parseURLQueryTerms(global.location.search));
+  }
   sn.counter = sn_counter;
   function sn_counter() {
     var c = 0;
@@ -6241,7 +6264,7 @@
   sn.net.securityHelper = function(apiToken, apiTokenSecret) {
     "use strict";
     var that = json;
-    var kFormUrlEncodedContentTypeRegex = /^application\/x-www-form-urlencoded/i;
+    var kFormUrlEncodedContentType = "application/x-www-form-urlencoded";
     var cred = {
       token: apiToken,
       secret: apiTokenSecret,
@@ -6334,7 +6357,10 @@
       return that;
     }
     function shouldIncludeContentDigest(contentType) {
-      return contentType && contentType.match(kFormUrlEncodedContentTypeRegex);
+      return contentType && contentType.indexOf(kFormUrlEncodedContentType) < 0;
+    }
+    function isFormDataContentType(contentType) {
+      return contentType && contentType.indexOf(kFormUrlEncodedContentType) == 0;
     }
     /**
 	 * Generate the canonical request message for a set of request parameters.
@@ -6412,7 +6438,7 @@
       });
     }
     function canonicalQueryParameters(uri, data, contentType) {
-      var params = parseURLQueryTerms(data && contentType.match(kFormUrlEncodedContentTypeRegex) ? data : uri.query);
+      var params = parseURLQueryTerms(data && !shouldIncludeContentDigest(contentType) ? data : uri.query);
       var sortedKeys = [], key, i, len, first = true, result;
       for (key in params) {
         sortedKeys.push(key);
@@ -6440,9 +6466,11 @@
           "x-sn-date": date.toUTCString()
         }
       };
-      if (shouldIncludeContentDigest(contentType)) {
+      if (contentType) {
         result.headerNames.push("content-type");
         result.headers["content-type"] = contentType;
+      }
+      if (shouldIncludeContentDigest(contentType)) {
         result.headerNames.push("digest");
         result.headers["digest"] = "sha-256=" + CryptoJS.enc.Base64.stringify(contentSHA256);
       }
@@ -6450,7 +6478,7 @@
       return result;
     }
     function bodyContentSHA256(data, contentType) {
-      return CryptoJS.SHA256(data && !contentType.match(kFormUrlEncodedContentTypeRegex) ? data : "");
+      return CryptoJS.SHA256(data && isFormDataContentType(contentType) ? data : "");
     }
     function iso8601Date(date, includeTime) {
       return "" + date.getUTCFullYear() + (date.getUTCMonth() < 9 ? "0" : "") + (date.getUTCMonth() + 1) + (date.getUTCDate() < 10 ? "0" : "") + date.getUTCDate() + (includeTime ? "T" + (date.getUTCHours() < 10 ? "0" : "") + date.getUTCHours() + (date.getUTCMinutes() < 10 ? "0" : "") + date.getUTCMinutes() + (date.getUTCSeconds() < 10 ? "0" : "") + date.getUTCSeconds() + "Z" : "");
