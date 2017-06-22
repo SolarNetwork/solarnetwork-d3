@@ -6250,7 +6250,7 @@
     };
     Object.defineProperties(that, {
       version: {
-        value: "1.3.0"
+        value: "1.4.0"
       },
       hasTokenCredentials: {
         value: hasTokenCredentials
@@ -6275,6 +6275,9 @@
       },
       json: {
         value: json
+      },
+      computeAuthorization: {
+        value: computeAuthorization
       }
     });
     /**
@@ -6484,6 +6487,55 @@
 	 * @param {String} [data] the data to upload
 	 * @param {String} [contentType] the content type of the data
 	 * @param {Function} [callback] if defined, a d3 callback function to handle the response JSON with
+	 * @return {Object} the computed header value details; the
+	 * @preserve
+	 */
+    function computeAuthorization(url, method, data, contentType, date) {
+      date = date || new Date();
+      var uri = URI.parse(url);
+      var canonQueryParams = canonicalQueryParameters(uri, data, contentType);
+      var canonHeaders = canonicalHeaders(uri, contentType, date, bodyContentDigest);
+      var bodyContentDigest = bodyContentSHA256(data, contentType);
+      var canonRequestMsg = generateCanonicalRequestMessage({
+        method: method,
+        uri: uri,
+        queryParams: canonQueryParams,
+        headers: canonHeaders,
+        bodyDigest: bodyContentDigest
+      });
+      var signingMsg = generateSigningMessage(date, canonRequestMsg);
+      var signKey = signingKey(date);
+      var authHeader = generateAuthorizationHeaderValue(canonHeaders.headerNames, signKey, signingMsg);
+      return {
+        header: authHeader,
+        date: date,
+        dateHeader: canonHeaders.headers["x-sn-date"],
+        verb: method,
+        canonicalUri: uri.path,
+        canonicalQueryParameters: canonQueryParams,
+        canonicalHeaders: canonHeaders,
+        bodyContentDigest: bodyContentDigest,
+        canonicalRequestMessage: canonRequestMsg,
+        signingMessage: signingMsg,
+        signingKey: signKey
+      };
+    }
+    /**
+	 * Invoke the web service URL, adding the required SolarNetworkWS authorization
+	 * headers to the request.
+	 *
+	 * <p>This method will construct the <code>X-SN-Date</code> and <code>Authorization</code>
+	 * header values needed to invoke the web service. It returns a d3 XHR object,
+	 * so you can call <code>.on()</code> on that to handle the response, unless a callback
+	 * parameter is specified, then the request is issued immediately, passing the
+	 * <code>method</code>, <code>data</code>, and <code>callback</code> parameters
+	 * to <code>xhr.send()</code>.</p>
+	 *
+	 * @param {String} url the web service URL to invoke
+	 * @param {String} method the HTTP method to use; e.g. GET or POST
+	 * @param {String} [data] the data to upload
+	 * @param {String} [contentType] the content type of the data
+	 * @param {Function} [callback] if defined, a d3 callback function to handle the response JSON with
 	 * @return {Object} d3 XHR object
 	 * @preserve
 	 */
@@ -6523,26 +6575,12 @@
         xhr.header("Content-Type", contentType);
       }
       xhr.on("beforesend", function(request) {
-        var date = new Date();
-        var uri = URI.parse(url);
-        var canonQueryParams = canonicalQueryParameters(uri, data, contentType);
-        var bodyContentDigest = bodyContentSHA256(data, contentType);
-        var canonHeaders = canonicalHeaders(uri, contentType, date, bodyContentDigest);
-        var canonRequestMsg = generateCanonicalRequestMessage({
-          method: method,
-          uri: uri,
-          queryParams: canonQueryParams,
-          headers: canonHeaders,
-          bodyDigest: bodyContentDigest
-        });
-        var signingMsg = generateSigningMessage(date, canonRequestMsg);
-        var signKey = signingKey(date);
-        var auth = generateAuthorizationHeaderValue(canonHeaders.headerNames, signKey, signingMsg);
-        request.setRequestHeader("Authorization", auth);
+        var authorization = computeAuthorization(url, method, data, contentType, new Date());
+        request.setRequestHeader("Authorization", authorization.header);
         if (bodyContentDigest && shouldIncludeContentDigest(contentType)) {
-          request.setRequestHeader("Digest", canonHeaders.headers["digest"]);
+          request.setRequestHeader("Digest", authorization.canonicalHeaders.headers["digest"]);
         }
-        request.setRequestHeader("X-SN-Date", canonHeaders.headers["x-sn-date"]);
+        request.setRequestHeader("X-SN-Date", authorization.canonicalHeaders.headers["x-sn-date"]);
       });
       xhr.on("load.internal", function() {});
       if (callback !== undefined) {
