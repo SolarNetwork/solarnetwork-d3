@@ -16,7 +16,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	'use strict';
 	var that = json;
 
-	var kFormUrlEncodedContentTypeRegex = /^application\/x-www-form-urlencoded/i;
+	var kFormUrlEncodedContentType = 'application/x-www-form-urlencoded';
 
 	// our in-memory credentials
 	var cred = {token: apiToken, secret: apiTokenSecret, signingKey: null, signingKeyExpiry: null};
@@ -102,7 +102,17 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	 */
 	function shouldIncludeContentDigest(contentType) {
 		// we don't send Digest for form data, because server treats this as URL parameters
-		return (contentType && contentType.match(kFormUrlEncodedContentTypeRegex));
+		return (contentType && contentType.indexOf(kFormUrlEncodedContentType) < 0);
+	}
+
+	/**
+	 * Test if a Content-Type header value is the form-url-encoded type.
+	 *
+	 * @param {String} contentType the content type
+	 * @returns {Boolean} <em>true</em> if the type is form-url-encoded
+	 */
+	function isFormDataContentType(contentType) {
+		return (contentType && contentType.indexOf(kFormUrlEncodedContentType) == 0);
 	}
 
 	/**
@@ -194,7 +204,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	}
 
 	function canonicalQueryParameters(uri, data, contentType) {
-		var params = parseURLQueryTerms(data && contentType.match(kFormUrlEncodedContentTypeRegex)
+		var params = parseURLQueryTerms(data && !shouldIncludeContentDigest(contentType)
 			? data : uri.query);
 		var sortedKeys = [],
 			key,
@@ -241,9 +251,11 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 				'x-sn-date' : date.toUTCString()
 			}
 		};
-		if ( shouldIncludeContentDigest(contentType) ) {
+		if ( contentType ) {
 			result.headerNames.push('content-type');
 			result.headers['content-type'] = contentType;
+		}
+		if ( shouldIncludeContentDigest(contentType) ) {
 			result.headerNames.push('digest');
 			result.headers['digest'] = 'sha-256='+CryptoJS.enc.Base64.stringify(contentSHA256);
 		}
@@ -252,7 +264,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	}
 
 	function bodyContentSHA256(data, contentType) {
-		return CryptoJS.SHA256(data && !contentType.match(kFormUrlEncodedContentTypeRegex)
+		return CryptoJS.SHA256(data && isFormDataContentType(contentType)
 			? data
 			: '');
 	}
