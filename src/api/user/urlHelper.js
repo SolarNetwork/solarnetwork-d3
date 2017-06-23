@@ -172,3 +172,16 @@ function sn_api_user_queueInstructionURL(topic, parameters) {
 	}
 	return url;
 }
+
+sn_api_node_registerUrlHelperFunction('viewNodeMetadataURL', sn_api_user_viewNodeMetadataURL);
+
+/**
+ * Generate a URL for viewing the configured node's metadata.
+ *
+ * The configured <code>nodeId</code> property will be used.
+ *
+ * @returns {String} the URL
+ */
+function sn_api_user_viewNodeMetadataURL() {
+	return (sn_api_user_baseURL(this) +'/nodes/meta/' +this.nodeId);
+}
