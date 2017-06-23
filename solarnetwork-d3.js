@@ -314,7 +314,7 @@
  * An active user-specific URL utility object. This object does not require
  * any specific user ID to be configured, as all requests are assumed to apply
  * to the active user credentials.
- * 
+ *
  * @class
  * @constructor
  * @param {Object} configuration The configuration options to use.
@@ -363,7 +363,7 @@
     }
     /**
 	 * Generate a SolarUser {@code /nodes} URL.
-	 * 
+	 *
 	 * @return {String} the URL to access the active user's nodes
 	 * @memberOf sn.api.user.userUrlHelper
 	 * @preserve
@@ -403,7 +403,7 @@
   };
   /**
  * Register a custom function to generate URLs with {@link sn.api.user.userUrlHelper}.
- * 
+ *
  * @param {String} name The name to give the custom function. By convention the function
  *                      names should end with 'URL'.
  * @param {Function} func The function to add to sn.api.user.userUrlHelper instances.
@@ -455,6 +455,10 @@
       }
     }
     return url;
+  }
+  sn_api_node_registerUrlHelperFunction("viewNodeMetadataURL", sn_api_user_viewNodeMetadataURL);
+  function sn_api_user_viewNodeMetadataURL() {
+    return sn_api_user_baseURL(this) + "/nodes/meta/" + this.nodeId;
   }
   /**
  * Manage the state of a boolean control switch using SolarNetwork SetControlParameter instructions.
