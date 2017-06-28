@@ -2,12 +2,13 @@ sn.util = {
 	arraysAreEqual : sn_util_arraysAreEqual,
 	copy : sn_util_copy,
 	copyAll : sn_util_copyAll,
+	merge: sn_util_merge,
 	superMethod : sn_util_superMethod
 };
 
 /**
  * Copy the enumerable own properties of `obj1` onto `obj2` and return `obj2`.
- * 
+ *
  * @param {Object} obj1 - The object to copy enumerable properties from.
  * @param {Object} [obj2] - The optional object to copy the properties to. If not
  *                          provided a new object will be created.
@@ -35,7 +36,7 @@ function sn_util_copy(obj1, obj2) {
 
 /**
  * Copy the enumerable and non-enumerable own properties of `obj` onto `obj2` and return `obj2`.
- * 
+ *
  * @param {Object} obj1 - The object to copy enumerable properties from.
  * @param {Object} [obj2] - The optional object to copy the properties to. If not
  *                          provided a new object will be created.
@@ -58,6 +59,34 @@ function sn_util_copyAll(obj1, obj2) {
 			Object.defineProperty(obj2, key, desc);
 		} else {
 			obj2[key] = obj1[key];
+		}
+	}
+	return obj2;
+}
+
+/**
+ * Copy the enumerable own properties of `obj1` that don't already exist on `obj2` into `obj2` and return `obj2`.
+ *
+ * @param {Object} obj1 - The object to copy enumerable properties from.
+ * @param {Object} [obj2] - The optional object to copy the properties to. If not
+ *                          provided a new object will be created.
+ * @returns {Object} The object whose properties were copied to.
+ * @since 0.14.0
+ * @preserve
+ */
+function sn_util_merge(obj1, obj2) {
+	var prop, desc;
+	if ( obj2 === undefined ) {
+		obj2 = {};
+	}
+	for ( prop in obj1 ) {
+		if ( obj1.hasOwnProperty(prop) && obj2[prop] === undefined ) {
+			desc = Object.getOwnPropertyDescriptor(obj1, prop);
+			if ( desc ) {
+				Object.defineProperty(obj2, prop, desc);
+			} else {
+				obj2[prop] = obj1[prop];
+			}
 		}
 	}
 	return obj2;
@@ -97,7 +126,7 @@ function sn_util_arraysAreEqual(a1, a2) {
 
 /**
  * Get a proxy method for a "super" class' method on the `this` objct.
- * 
+ *
  * @param {String} name - The name of the method to get a proxy for.
  * @returns {Function} A function that calls the `name` function of the `this` object.
  * @since 0.0.4

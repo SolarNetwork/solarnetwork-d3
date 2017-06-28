@@ -16,14 +16,14 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	'use strict';
 	var that = json;
 
-	var kFormUrlEncodedContentTypeRegex = /^application\/x-www-form-urlencoded/i;
+	var kFormUrlEncodedContentType = 'application/x-www-form-urlencoded';
 
 	// our in-memory credentials
 	var cred = {token: apiToken, secret: apiTokenSecret, signingKey: null, signingKeyExpiry: null};
 
 	// setup core properties
 	Object.defineProperties(that, {
-		version								: { value : '1.3.0' },
+		version								: { value : '1.4.0' },
 		hasTokenCredentials					: { value : hasTokenCredentials },
 		token								: { value : token },
 		secret								: { value : secret },
@@ -31,7 +31,8 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 		clearSecret 						: { value : clearSecret },
 		generateAuthorizationHeaderValue 	: { value : generateAuthorizationHeaderValue },
 		parseURLQueryTerms 					: { value : parseURLQueryTerms },
-		json 								: { value : json }
+		json 								: { value : json },
+		computeAuthorization				: { value : computeAuthorization },
 	});
 
 	/**
@@ -101,7 +102,17 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	 */
 	function shouldIncludeContentDigest(contentType) {
 		// we don't send Digest for form data, because server treats this as URL parameters
-		return (contentType && contentType.match(kFormUrlEncodedContentTypeRegex));
+		return (contentType && contentType.indexOf(kFormUrlEncodedContentType) < 0);
+	}
+
+	/**
+	 * Test if a Content-Type header value is the form-url-encoded type.
+	 *
+	 * @param {String} contentType the content type
+	 * @returns {Boolean} <em>true</em> if the type is form-url-encoded
+	 */
+	function isFormDataContentType(contentType) {
+		return (contentType && contentType.indexOf(kFormUrlEncodedContentType) == 0);
 	}
 
 	/**
@@ -193,7 +204,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	}
 
 	function canonicalQueryParameters(uri, data, contentType) {
-		var params = parseURLQueryTerms(data && contentType.match(kFormUrlEncodedContentTypeRegex)
+		var params = parseURLQueryTerms(data && !shouldIncludeContentDigest(contentType)
 			? data : uri.query);
 		var sortedKeys = [],
 			key,
@@ -240,9 +251,11 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 				'x-sn-date' : date.toUTCString()
 			}
 		};
-		if ( shouldIncludeContentDigest(contentType) ) {
+		if ( contentType ) {
 			result.headerNames.push('content-type');
 			result.headers['content-type'] = contentType;
+		}
+		if ( shouldIncludeContentDigest(contentType) ) {
 			result.headerNames.push('digest');
 			result.headers['digest'] = 'sha-256='+CryptoJS.enc.Base64.stringify(contentSHA256);
 		}
@@ -251,7 +264,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	}
 
 	function bodyContentSHA256(data, contentType) {
-		return CryptoJS.SHA256(data && !contentType.match(kFormUrlEncodedContentTypeRegex)
+		return CryptoJS.SHA256(data && isFormDataContentType(contentType)
 			? data
 			: '');
 	}
@@ -287,6 +300,64 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 			cred.signingKeyExpiry = expireDate.getTime() + (7 * 24 * 60 * 60 * 1000);
 		}
 		return key;
+	}
+
+	/**
+	 * Invoke the web service URL, adding the required SolarNetworkWS authorization
+	 * headers to the request.
+	 *
+	 * <p>This method will construct the <code>X-SN-Date</code> and <code>Authorization</code>
+	 * header values needed to invoke the web service. It returns a d3 XHR object,
+	 * so you can call <code>.on()</code> on that to handle the response, unless a callback
+	 * parameter is specified, then the request is issued immediately, passing the
+	 * <code>method</code>, <code>data</code>, and <code>callback</code> parameters
+	 * to <code>xhr.send()</code>.</p>
+	 *
+	 * @param {String} url the web service URL to invoke
+	 * @param {String} method the HTTP method to use; e.g. GET or POST
+	 * @param {String} [data] the data to upload
+	 * @param {String} [contentType] the content type of the data
+	 * @param {Function} [callback] if defined, a d3 callback function to handle the response JSON with
+	 * @return {Object} the computed header value details; the
+	 * @preserve
+	 */
+	function computeAuthorization(url, method, data, contentType, date) {
+		date = (date || new Date());
+
+		var uri = URI.parse(url);
+
+		var canonQueryParams = canonicalQueryParameters(uri, data, contentType);
+
+		var canonHeaders = canonicalHeaders(uri, contentType, date, bodyContentDigest);
+
+		var bodyContentDigest = bodyContentSHA256(data, contentType);
+
+		var canonRequestMsg = generateCanonicalRequestMessage({
+			method: method,
+			uri: uri,
+			queryParams : canonQueryParams,
+			headers : canonHeaders,
+			bodyDigest: bodyContentDigest
+		});
+
+		var signingMsg = generateSigningMessage(date, canonRequestMsg);
+
+		var signKey = signingKey(date);
+
+		var authHeader = generateAuthorizationHeaderValue(canonHeaders.headerNames, signKey, signingMsg);
+		return {
+			header: authHeader,
+			date: date,
+			dateHeader: canonHeaders.headers['x-sn-date'],
+			verb: method,
+			canonicalUri: uri.path,
+			canonicalQueryParameters: canonQueryParams,
+			canonicalHeaders: canonHeaders,
+			bodyContentDigest: bodyContentDigest,
+			canonicalRequestMessage: canonRequestMsg,
+			signingMessage: signingMsg,
+			signingKey: signKey
+		};
 	}
 
 	/**
@@ -348,36 +419,14 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 			xhr.header('Content-Type', contentType);
 		}
 		xhr.on('beforesend', function(request) {
-			var date = new Date();
-
-			var uri = URI.parse(url);
-
-			var canonQueryParams = canonicalQueryParameters(uri, data, contentType);
-
-			var bodyContentDigest = bodyContentSHA256(data, contentType);
-
-			var canonHeaders = canonicalHeaders(uri, contentType, date, bodyContentDigest);
-
-			var canonRequestMsg = generateCanonicalRequestMessage({
-				method: method,
-				uri: uri,
-				queryParams : canonQueryParams,
-				headers : canonHeaders,
-				bodyDigest: bodyContentDigest
-			});
-
-			var signingMsg = generateSigningMessage(date, canonRequestMsg);
-
-			var signKey = signingKey(date);
-
-			var auth = generateAuthorizationHeaderValue(canonHeaders.headerNames, signKey, signingMsg);
+			var authorization = computeAuthorization(url, method, data, contentType, new Date());
 
 			// set the headers on our request
-			request.setRequestHeader('Authorization', auth);
-			if ( bodyContentDigest && shouldIncludeContentDigest(contentType) ) {
-				request.setRequestHeader('Digest', canonHeaders.headers['digest']);
+			request.setRequestHeader('Authorization', authorization.header);
+			if ( authorization.bodyContentDigest && shouldIncludeContentDigest(contentType) ) {
+				request.setRequestHeader('Digest', authorization.canonicalHeaders.headers['digest']);
 			}
-			request.setRequestHeader('X-SN-Date', canonHeaders.headers['x-sn-date']);
+			request.setRequestHeader('X-SN-Date', authorization.canonicalHeaders.headers['x-sn-date']);
 		});
 
 		// register a load handler always, just so one is present

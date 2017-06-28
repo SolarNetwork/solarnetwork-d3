@@ -8,7 +8,7 @@ sn.api.user.registerUrlHelperFunction = sn_api_user_registerUrlHelperFunction;
 var sn_api_user_urlHelperFunctions;
 
 function sn_api_user_baseURL(urlHelper) {
-	return (urlHelper.hostURL() 
+	return (urlHelper.hostURL()
 		+(sn.config && sn.config.solarUserPath ? sn.config.solarUserPath : '/solaruser')
 		+'/api/v1/sec');
 }
@@ -17,7 +17,7 @@ function sn_api_user_baseURL(urlHelper) {
  * An active user-specific URL utility object. This object does not require
  * any specific user ID to be configured, as all requests are assumed to apply
  * to the active user credentials.
- * 
+ *
  * @class
  * @constructor
  * @param {Object} configuration The configuration options to use.
@@ -28,14 +28,14 @@ sn.api.user.userUrlHelper = function(configuration) {
 	var self = {
 		version : '1.0.0'
 	};
-	
+
 	var config = sn.util.copy(configuration, {
 		host : 'data.solarnetwork.net',
 		tls : true,
 		path : '/solaruser',
 		secureQuery : true
 	});
-	
+
 	/**
 	 * Get a URL for just the SolarNet host, without any path.
 	 *
@@ -46,7 +46,7 @@ sn.api.user.userUrlHelper = function(configuration) {
 	function hostURL() {
 		return ('http' +(config.tls === true ? 's' : '') +'://' +config.host);
 	}
-	
+
 	/**
 	 * Get a URL for the SolarNet host and the base API path, e.g. <code>/solaruser/api/v1/sec</code>.
 	 *
@@ -57,7 +57,7 @@ sn.api.user.userUrlHelper = function(configuration) {
 	function baseURL() {
 		return (hostURL() +config.path +'/api/v1/' +(config.secureQuery === true ? 'sec' : 'pub'));
 	}
-	
+
 	/**
 	 * Get a description of this helper object.
 	 *
@@ -68,10 +68,10 @@ sn.api.user.userUrlHelper = function(configuration) {
 	function keyDescription() {
 		return 'user';
 	}
-	
+
 	/**
 	 * Generate a SolarUser {@code /nodes} URL.
-	 * 
+	 *
 	 * @return {String} the URL to access the active user's nodes
 	 * @memberOf sn.api.user.userUrlHelper
 	 * @preserve
@@ -80,7 +80,7 @@ sn.api.user.userUrlHelper = function(configuration) {
 		var url = (baseURL() + '/nodes');
 		return url;
 	}
-	
+
 	// setup core properties
 	Object.defineProperties(self, {
 		keyDescription			: { value : keyDescription },
@@ -88,7 +88,7 @@ sn.api.user.userUrlHelper = function(configuration) {
 		baseURL					: { value : baseURL },
 		viewNodesURL 			: { value : viewNodesURL }
 	});
-	
+
 	// allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
 	(function() {
 		if ( Array.isArray(sn_api_user_urlHelperFunctions) ) {
@@ -107,7 +107,7 @@ sn.api.user.userUrlHelper = function(configuration) {
 
 /**
  * Register a custom function to generate URLs with {@link sn.api.user.userUrlHelper}.
- * 
+ *
  * @param {String} name The name to give the custom function. By convention the function
  *                      names should end with 'URL'.
  * @param {Function} func The function to add to sn.api.user.userUrlHelper instances.
@@ -127,7 +127,7 @@ function sn_api_user_registerUrlHelperFunction(name, func) {
 /*
  * Node URL helper functions
  */
- 
+
 sn_api_node_registerUrlHelperFunction('viewInstruction', sn_api_user_viewInstruction);
 sn_api_node_registerUrlHelperFunction('viewActiveInstructionsURL', sn_api_user_viewActiveInstructionsURL);
 sn_api_node_registerUrlHelperFunction('viewPendingInstructionsURL', sn_api_user_viewPendingInstructionsURL);
@@ -147,7 +147,7 @@ function sn_api_user_viewPendingInstructionsURL() {
 }
 
 function sn_api_user_updateInstructionStateURL(instructionID, state) {
-	return (sn_api_user_baseURL(this) 
+	return (sn_api_user_baseURL(this)
 		+'/instr/updateState?id=' +encodeURIComponent(instructionID)
 		+'&state=' +encodeURIComponent(state));
 }
@@ -160,7 +160,7 @@ function sn_api_user_updateInstructionStateURL(instructionID, state) {
  * @preserve
  */
 function sn_api_user_queueInstructionURL(topic, parameters) {
-	var url = (sn_api_user_baseURL(this) 
+	var url = (sn_api_user_baseURL(this)
 		+'/instr/add?nodeId=' +this.nodeId
 		+'&topic=' +encodeURIComponent(topic));
 	if ( Array.isArray(parameters) ) {
@@ -171,4 +171,17 @@ function sn_api_user_queueInstructionURL(topic, parameters) {
 		}
 	}
 	return url;
+}
+
+sn_api_node_registerUrlHelperFunction('viewNodeMetadataURL', sn_api_user_viewNodeMetadataURL);
+
+/**
+ * Generate a URL for viewing the configured node's metadata.
+ *
+ * The configured <code>nodeId</code> property will be used.
+ *
+ * @returns {String} the URL
+ */
+function sn_api_user_viewNodeMetadataURL() {
+	return (sn_api_user_baseURL(this) +'/nodes/meta/' +this.nodeId);
 }

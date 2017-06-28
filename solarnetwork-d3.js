@@ -9,64 +9,14 @@
 })(this, function(colorbrewer, d3, queue, CryptoJS, URI) {
   "use strict";
   var sn = {
-    version: "0.13.0"
+    version: "0.14.0"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
   sn.api.control = {};
   sn.api.user = {};
   sn.api.node = {};
-  var global = function() {
-    if (typeof self !== "undefined") {
-      return self;
-    }
-    if (typeof global !== "undefined") {
-      return global;
-    }
-    return new Function("return this")();
-  }();
-  sn.net = {};
-  sn.net.parseURLQueryTerms = sn_net_parseURLQueryTerms;
-  /**
- * Parse the query portion of a URL string, and return a parameter object for the
- * parsed key/value pairs.
- * 
- * <p>Multiple parameters of the same name will be stored as an array on the returned object.</p>
- * 
- * @param {String} search the query portion of the URL, which may optionally include 
- *                        the leading '?' character
- * @return {Object} the parsed query parameters, as a parameter object
- * @preserve
- */
-  function sn_net_parseURLQueryTerms(search) {
-    var params = {};
-    var pairs;
-    var pair;
-    var i, len, k, v;
-    if (search !== undefined && search.length > 0) {
-      if (search.match(/^\?/)) {
-        search = search.substring(1);
-      }
-      pairs = search.split("&");
-      for (i = 0, len = pairs.length; i < len; i++) {
-        pair = pairs[i].split("=", 2);
-        if (pair.length === 2) {
-          k = decodeURIComponent(pair[0]);
-          v = decodeURIComponent(pair[1]);
-          if (params[k]) {
-            if (!Array.isArray(params[k])) {
-              params[k] = [ params[k] ];
-            }
-            params[k].push(v);
-          } else {
-            params[k] = v;
-          }
-        }
-      }
-    }
-    return params;
-  }
-  var sn_env = {
+  var sn_config = {
     debug: false,
     host: "data.solarnetwork.net",
     tls: function() {
@@ -76,49 +26,20 @@
     solarUserPath: "/solaruser",
     secureQuery: false
   };
-  function sn_env_setDefaultEnv(defaults) {
-    var prop;
-    for (prop in defaults) {
-      if (defaults.hasOwnProperty(prop)) {
-        if (sn_env[prop] === undefined) {
-          sn_env[prop] = defaults[prop];
-        }
-      }
-    }
+  sn.config = sn_config;
+  function sn_config_getConfig() {
+    return sn_config;
   }
-  function sn_env_setEnv(environment) {
-    var prop;
-    for (prop in environment) {
-      if (environment.hasOwnProperty(prop)) {
-        sn_env[prop] = environment[prop];
-      }
-    }
-  }
-  sn.env = sn_env;
-  sn.setEnv = sn_env_setEnv;
-  sn.setDefaultEnv = sn_env_setDefaultEnv;
-  if (global !== undefined && global.location !== undefined && global.location.search !== undefined) {
-    sn_env_setEnv(sn_net_parseURLQueryTerms(global.location.search));
-  }
-  sn.config = {
-    debug: false,
-    host: "data.solarnetwork.net",
-    tls: function() {
-      return global !== undefined && global.location !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
-    }(),
-    path: "/solarquery",
-    solarUserPath: "/solaruser",
-    secureQuery: false
-  };
   sn.util = {
     arraysAreEqual: sn_util_arraysAreEqual,
     copy: sn_util_copy,
     copyAll: sn_util_copyAll,
+    merge: sn_util_merge,
     superMethod: sn_util_superMethod
   };
   /**
  * Copy the enumerable own properties of `obj1` onto `obj2` and return `obj2`.
- * 
+ *
  * @param {Object} obj1 - The object to copy enumerable properties from.
  * @param {Object} [obj2] - The optional object to copy the properties to. If not
  *                          provided a new object will be created.
@@ -145,7 +66,7 @@
   }
   /**
  * Copy the enumerable and non-enumerable own properties of `obj` onto `obj2` and return `obj2`.
- * 
+ *
  * @param {Object} obj1 - The object to copy enumerable properties from.
  * @param {Object} [obj2] - The optional object to copy the properties to. If not
  *                          provided a new object will be created.
@@ -165,6 +86,33 @@
         Object.defineProperty(obj2, key, desc);
       } else {
         obj2[key] = obj1[key];
+      }
+    }
+    return obj2;
+  }
+  /**
+ * Copy the enumerable own properties of `obj1` that don't already exist on `obj2` into `obj2` and return `obj2`.
+ *
+ * @param {Object} obj1 - The object to copy enumerable properties from.
+ * @param {Object} [obj2] - The optional object to copy the properties to. If not
+ *                          provided a new object will be created.
+ * @returns {Object} The object whose properties were copied to.
+ * @since 0.14.0
+ * @preserve
+ */
+  function sn_util_merge(obj1, obj2) {
+    var prop, desc;
+    if (obj2 === undefined) {
+      obj2 = {};
+    }
+    for (prop in obj1) {
+      if (obj1.hasOwnProperty(prop) && obj2[prop] === undefined) {
+        desc = Object.getOwnPropertyDescriptor(obj1, prop);
+        if (desc) {
+          Object.defineProperty(obj2, prop, desc);
+        } else {
+          obj2[prop] = obj1[prop];
+        }
       }
     }
     return obj2;
@@ -198,7 +146,7 @@
   }
   /**
  * Get a proxy method for a "super" class' method on the `this` objct.
- * 
+ *
  * @param {String} name - The name of the method to get a proxy for.
  * @returns {Function} A function that calls the `name` function of the `this` object.
  * @since 0.0.4
@@ -366,7 +314,7 @@
  * An active user-specific URL utility object. This object does not require
  * any specific user ID to be configured, as all requests are assumed to apply
  * to the active user credentials.
- * 
+ *
  * @class
  * @constructor
  * @param {Object} configuration The configuration options to use.
@@ -415,7 +363,7 @@
     }
     /**
 	 * Generate a SolarUser {@code /nodes} URL.
-	 * 
+	 *
 	 * @return {String} the URL to access the active user's nodes
 	 * @memberOf sn.api.user.userUrlHelper
 	 * @preserve
@@ -455,7 +403,7 @@
   };
   /**
  * Register a custom function to generate URLs with {@link sn.api.user.userUrlHelper}.
- * 
+ *
  * @param {String} name The name to give the custom function. By convention the function
  *                      names should end with 'URL'.
  * @param {Function} func The function to add to sn.api.user.userUrlHelper instances.
@@ -507,6 +455,10 @@
       }
     }
     return url;
+  }
+  sn_api_node_registerUrlHelperFunction("viewNodeMetadataURL", sn_api_user_viewNodeMetadataURL);
+  function sn_api_user_viewNodeMetadataURL() {
+    return sn_api_user_baseURL(this) + "/nodes/meta/" + this.nodeId;
   }
   /**
  * Manage the state of a boolean control switch using SolarNetwork SetControlParameter instructions.
@@ -879,6 +831,7 @@
       console.log(sn.format.fmt.apply(this, arguments));
     }
   }
+  sn.net = {};
   /**
  * Load data for a set of source IDs, date range, and aggregate level using the
  * {@code dateTimeListURL} endpoint. This object is designed
@@ -6057,6 +6010,80 @@
     result.displaySourceObjects = displayToSourceObjects;
     return result;
   }
+  var global = function() {
+    if (typeof self !== "undefined") {
+      return self;
+    }
+    if (typeof global !== "undefined") {
+      return global;
+    }
+    return new Function("return this")();
+  }();
+  sn.net.parseURLQueryTerms = sn_net_parseURLQueryTerms;
+  /**
+ * Parse the query portion of a URL string, and return a parameter object for the
+ * parsed key/value pairs.
+ * 
+ * <p>Multiple parameters of the same name will be stored as an array on the returned object.</p>
+ * 
+ * @param {String} search the query portion of the URL, which may optionally include 
+ *                        the leading '?' character
+ * @return {Object} the parsed query parameters, as a parameter object
+ * @preserve
+ */
+  function sn_net_parseURLQueryTerms(search) {
+    var params = {};
+    var pairs;
+    var pair;
+    var i, len, k, v;
+    if (search !== undefined && search.length > 0) {
+      if (search.match(/^\?/)) {
+        search = search.substring(1);
+      }
+      pairs = search.split("&");
+      for (i = 0, len = pairs.length; i < len; i++) {
+        pair = pairs[i].split("=", 2);
+        if (pair.length === 2) {
+          k = decodeURIComponent(pair[0]);
+          v = decodeURIComponent(pair[1]);
+          if (params[k]) {
+            if (!Array.isArray(params[k])) {
+              params[k] = [ params[k] ];
+            }
+            params[k].push(v);
+          } else {
+            params[k] = v;
+          }
+        }
+      }
+    }
+    return params;
+  }
+  var sn_env = sn_util_copy(sn_config_getConfig(), {});
+  function sn_env_setDefaultEnv(defaults) {
+    var prop;
+    for (prop in defaults) {
+      if (defaults.hasOwnProperty(prop)) {
+        if (sn_env[prop] === undefined) {
+          sn_env[prop] = defaults[prop];
+        }
+      }
+    }
+  }
+  function sn_env_setEnv(environment) {
+    var prop;
+    for (prop in environment) {
+      if (environment.hasOwnProperty(prop)) {
+        sn_env[prop] = environment[prop];
+      }
+    }
+  }
+  sn.env = sn_env;
+  sn.setEnv = sn_env_setEnv;
+  sn.setDefaultEnv = sn_env_setDefaultEnv;
+  if (global !== undefined && global.location !== undefined && global.location.search !== undefined) {
+    sn_env_setEnv(sn_net_parseURLQueryTerms(global.location.search));
+  }
   sn.counter = sn_counter;
   function sn_counter() {
     var c = 0;
@@ -6241,7 +6268,7 @@
   sn.net.securityHelper = function(apiToken, apiTokenSecret) {
     "use strict";
     var that = json;
-    var kFormUrlEncodedContentTypeRegex = /^application\/x-www-form-urlencoded/i;
+    var kFormUrlEncodedContentType = "application/x-www-form-urlencoded";
     var cred = {
       token: apiToken,
       secret: apiTokenSecret,
@@ -6250,7 +6277,7 @@
     };
     Object.defineProperties(that, {
       version: {
-        value: "1.3.0"
+        value: "1.4.0"
       },
       hasTokenCredentials: {
         value: hasTokenCredentials
@@ -6275,6 +6302,9 @@
       },
       json: {
         value: json
+      },
+      computeAuthorization: {
+        value: computeAuthorization
       }
     });
     /**
@@ -6331,7 +6361,10 @@
       return that;
     }
     function shouldIncludeContentDigest(contentType) {
-      return contentType && contentType.match(kFormUrlEncodedContentTypeRegex);
+      return contentType && contentType.indexOf(kFormUrlEncodedContentType) < 0;
+    }
+    function isFormDataContentType(contentType) {
+      return contentType && contentType.indexOf(kFormUrlEncodedContentType) == 0;
     }
     /**
 	 * Generate the canonical request message for a set of request parameters.
@@ -6409,7 +6442,7 @@
       });
     }
     function canonicalQueryParameters(uri, data, contentType) {
-      var params = parseURLQueryTerms(data && contentType.match(kFormUrlEncodedContentTypeRegex) ? data : uri.query);
+      var params = parseURLQueryTerms(data && !shouldIncludeContentDigest(contentType) ? data : uri.query);
       var sortedKeys = [], key, i, len, first = true, result;
       for (key in params) {
         sortedKeys.push(key);
@@ -6437,9 +6470,11 @@
           "x-sn-date": date.toUTCString()
         }
       };
-      if (shouldIncludeContentDigest(contentType)) {
+      if (contentType) {
         result.headerNames.push("content-type");
         result.headers["content-type"] = contentType;
+      }
+      if (shouldIncludeContentDigest(contentType)) {
         result.headerNames.push("digest");
         result.headers["digest"] = "sha-256=" + CryptoJS.enc.Base64.stringify(contentSHA256);
       }
@@ -6447,7 +6482,7 @@
       return result;
     }
     function bodyContentSHA256(data, contentType) {
-      return CryptoJS.SHA256(data && !contentType.match(kFormUrlEncodedContentTypeRegex) ? data : "");
+      return CryptoJS.SHA256(data && isFormDataContentType(contentType) ? data : "");
     }
     function iso8601Date(date, includeTime) {
       return "" + date.getUTCFullYear() + (date.getUTCMonth() < 9 ? "0" : "") + (date.getUTCMonth() + 1) + (date.getUTCDate() < 10 ? "0" : "") + date.getUTCDate() + (includeTime ? "T" + (date.getUTCHours() < 10 ? "0" : "") + date.getUTCHours() + (date.getUTCMinutes() < 10 ? "0" : "") + date.getUTCMinutes() + (date.getUTCSeconds() < 10 ? "0" : "") + date.getUTCSeconds() + "Z" : "");
@@ -6467,6 +6502,55 @@
         cred.signingKeyExpiry = expireDate.getTime() + 7 * 24 * 60 * 60 * 1e3;
       }
       return key;
+    }
+    /**
+	 * Invoke the web service URL, adding the required SolarNetworkWS authorization
+	 * headers to the request.
+	 *
+	 * <p>This method will construct the <code>X-SN-Date</code> and <code>Authorization</code>
+	 * header values needed to invoke the web service. It returns a d3 XHR object,
+	 * so you can call <code>.on()</code> on that to handle the response, unless a callback
+	 * parameter is specified, then the request is issued immediately, passing the
+	 * <code>method</code>, <code>data</code>, and <code>callback</code> parameters
+	 * to <code>xhr.send()</code>.</p>
+	 *
+	 * @param {String} url the web service URL to invoke
+	 * @param {String} method the HTTP method to use; e.g. GET or POST
+	 * @param {String} [data] the data to upload
+	 * @param {String} [contentType] the content type of the data
+	 * @param {Function} [callback] if defined, a d3 callback function to handle the response JSON with
+	 * @return {Object} the computed header value details; the
+	 * @preserve
+	 */
+    function computeAuthorization(url, method, data, contentType, date) {
+      date = date || new Date();
+      var uri = URI.parse(url);
+      var canonQueryParams = canonicalQueryParameters(uri, data, contentType);
+      var canonHeaders = canonicalHeaders(uri, contentType, date, bodyContentDigest);
+      var bodyContentDigest = bodyContentSHA256(data, contentType);
+      var canonRequestMsg = generateCanonicalRequestMessage({
+        method: method,
+        uri: uri,
+        queryParams: canonQueryParams,
+        headers: canonHeaders,
+        bodyDigest: bodyContentDigest
+      });
+      var signingMsg = generateSigningMessage(date, canonRequestMsg);
+      var signKey = signingKey(date);
+      var authHeader = generateAuthorizationHeaderValue(canonHeaders.headerNames, signKey, signingMsg);
+      return {
+        header: authHeader,
+        date: date,
+        dateHeader: canonHeaders.headers["x-sn-date"],
+        verb: method,
+        canonicalUri: uri.path,
+        canonicalQueryParameters: canonQueryParams,
+        canonicalHeaders: canonHeaders,
+        bodyContentDigest: bodyContentDigest,
+        canonicalRequestMessage: canonRequestMsg,
+        signingMessage: signingMsg,
+        signingKey: signKey
+      };
     }
     /**
 	 * Invoke the web service URL, adding the required SolarNetworkWS authorization
@@ -6523,26 +6607,12 @@
         xhr.header("Content-Type", contentType);
       }
       xhr.on("beforesend", function(request) {
-        var date = new Date();
-        var uri = URI.parse(url);
-        var canonQueryParams = canonicalQueryParameters(uri, data, contentType);
-        var bodyContentDigest = bodyContentSHA256(data, contentType);
-        var canonHeaders = canonicalHeaders(uri, contentType, date, bodyContentDigest);
-        var canonRequestMsg = generateCanonicalRequestMessage({
-          method: method,
-          uri: uri,
-          queryParams: canonQueryParams,
-          headers: canonHeaders,
-          bodyDigest: bodyContentDigest
-        });
-        var signingMsg = generateSigningMessage(date, canonRequestMsg);
-        var signKey = signingKey(date);
-        var auth = generateAuthorizationHeaderValue(canonHeaders.headerNames, signKey, signingMsg);
-        request.setRequestHeader("Authorization", auth);
-        if (bodyContentDigest && shouldIncludeContentDigest(contentType)) {
-          request.setRequestHeader("Digest", canonHeaders.headers["digest"]);
+        var authorization = computeAuthorization(url, method, data, contentType, new Date());
+        request.setRequestHeader("Authorization", authorization.header);
+        if (authorization.bodyContentDigest && shouldIncludeContentDigest(contentType)) {
+          request.setRequestHeader("Digest", authorization.canonicalHeaders.headers["digest"]);
         }
-        request.setRequestHeader("X-SN-Date", canonHeaders.headers["x-sn-date"]);
+        request.setRequestHeader("X-SN-Date", authorization.canonicalHeaders.headers["x-sn-date"]);
       });
       xhr.on("load.internal", function() {});
       if (callback !== undefined) {

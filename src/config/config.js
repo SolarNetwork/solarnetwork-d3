@@ -1,6 +1,4 @@
-import 'env';
-
-sn.config = {
+var sn_config = {
 	debug : false,
 	host : 'data.solarnetwork.net',
 	tls : (function() {
@@ -13,3 +11,9 @@ sn.config = {
 	solarUserPath : '/solaruser',
 	secureQuery : false
 };
+
+sn.config = sn_config;
+
+function sn_config_getConfig() {
+	return sn_config;
+}
