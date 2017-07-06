@@ -303,22 +303,56 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	}
 
 	/**
-	 * Invoke the web service URL, adding the required SolarNetworkWS authorization
-	 * headers to the request.
+	 * Compute SNWS2 authorization info.
 	 *
-	 * <p>This method will construct the <code>X-SN-Date</code> and <code>Authorization</code>
-	 * header values needed to invoke the web service. It returns a d3 XHR object,
-	 * so you can call <code>.on()</code> on that to handle the response, unless a callback
-	 * parameter is specified, then the request is issued immediately, passing the
-	 * <code>method</code>, <code>data</code>, and <code>callback</code> parameters
-	 * to <code>xhr.send()</code>.</p>
+	 * <p>This method will compute the components necessary to later invoke a SolarNetwork
+	 * API request using the SNWS2 authorization scheme. The {@code token} and {@code secret}
+	 * properties must have been set on this object before calling this method.
+	 *
+	 * Often just the <code>header</code> value is of interest to calling code, but the other
+	 * properties returned can be useful when debugging or otherwise showing the steps involved
+	 * in computing the header value.
+	 *
+	 * The returned object will contain the following properties:
+	 *
+	 * <dl>
+	 * <dt>header</dt>
+	 * <dd>The full <code>Authorization</code> HTTP header value string, which can be added to
+	 * an actual XHR request using the same connection properties passed to this method.</dd>
+	 * <dt>date</dt>
+	 * <dd>The same <code>date</code> object passed to this method.</dd>
+	 * <dt>dateHeader</dt>
+	 * <dd>A date string, which can be added to an actual XHR request as the <code>X-SN-Date</code>
+	 * HTTP header.</dd>
+	 * <dt>verb</dt>
+	 * <dd>The HTTP <code>method</code> passed to this method.</dd>
+	 * <dt>canonicalUri</dt>
+	 * <dd>The canonical URI used in the canonical request message.</dd>
+	 * <dt>canonicalQueryParameters</dt>
+	 * <dd>The canonical query parameters, which come either from the actual <code>urL</code>
+	 * query parameters or <code>data</code> if the <code>contentType</code> is a form post.</dd>
+	 * <dt>canonicalHeaders</dt>
+	 * <dd>An object with a <code>headerNames</code> property containing the canonical header
+	 * names as an array of strings in lower case, and a <code>headers</code> property containing
+	 * an object with keys from the <code>headerNames</code> array and their associated header
+	 * values.</dd>
+	 * <dt>bodyContentDigest</dt>
+	 * <dd>A CryptoJS.SHA256 digest of <code>data</code if <code>contentType</code> if form data,
+	 * otherwise a digest of an empty string value.</dd>
+	 * <dt>canonicalRequestMessage</dt>
+	 * <dd>The full canonical request message as a string.</dd>
+	 * <dt>signingMessage</dt>
+	 * <dd>The computed message to sign, as a string.</dd>
+	 * <dt>signingKey</dt>
+	 * <dd>A CryptoJS.HmacSHA256 digest of the key used to sign the signing message.</dd>
+	 * </dl>
 	 *
 	 * @param {String} url the web service URL to invoke
 	 * @param {String} method the HTTP method to use; e.g. GET or POST
-	 * @param {String} [data] the data to upload
-	 * @param {String} [contentType] the content type of the data
-	 * @param {Function} [callback] if defined, a d3 callback function to handle the response JSON with
-	 * @return {Object} the computed header value details; the
+	 * @param {String} data the data to upload, or <code>undefined</code> if none
+	 * @param {String} contentType the content type of <code>data</code>, or <code>undefined</code> if none
+	 * @param {Date} date the date to use for the authorization request
+	 * @return {Object} the computed authorization details
 	 * @preserve
 	 */
 	function computeAuthorization(url, method, data, contentType, date) {
@@ -361,8 +395,7 @@ sn.net.securityHelper = function(apiToken, apiTokenSecret) {
 	}
 
 	/**
-	 * Invoke the web service URL, adding the required SolarNetworkWS authorization
-	 * headers to the request.
+	 * Invoke the web service URL, adding the required SNWS2 authorization headers to the request.
 	 *
 	 * <p>This method will construct the <code>X-SN-Date</code> and <code>Authorization</code>
 	 * header values needed to invoke the web service. It returns a d3 XHR object,
