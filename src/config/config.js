@@ -1,3 +1,5 @@
+import "../core/global";
+
 var sn_config = {
 	debug : false,
 	host : 'data.solarnetwork.net',
