@@ -36,7 +36,9 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 			if ( parent.xAxisTickCallback() ) {
 				return xAxisTickCallback().call(parent.me, d, i, parent.x);
 			} else {
-				return timeKeyLabels[parent.x.domain().indexOf(d)];
+				return timeKeyLabels[parent.x.domain().findIndex(function(el) {
+					return el.getTime() === d.getTime();
+				})];
 			}
 		};
 	}
