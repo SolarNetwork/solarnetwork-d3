@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue, CryptoJS, URI) {
   "use strict";
   var sn = {
-    version: "0.14.1"
+    version: "0.15.0"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -28,9 +28,7 @@
   var sn_config = {
     debug: false,
     host: "data.solarnetwork.net",
-    tls: function() {
-      return global !== undefined && global.location !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
-    }(),
+    tls: true,
     path: "/solarquery",
     solarUserPath: "/solaruser",
     secureQuery: false
@@ -803,9 +801,25 @@
   sn.format = {};
   sn.format.dateTimeFormat = d3.time.format.utc("%Y-%m-%d %H:%M");
   sn.format.timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
+  sn.format.timestampSecsFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%SZ");
   sn.format.dateTimeFormatLocal = d3.time.format("%Y-%m-%d %H:%M");
   sn.format.dateTimeFormatURL = d3.time.format.utc("%Y-%m-%dT%H:%M");
   sn.format.dateFormat = d3.time.format.utc("%Y-%m-%d");
+  sn.format.parseTimestamp = sn_format_parseTimestamp;
+  /**
+ * Parse a timestamp string into a Date object.
+ * 
+ * @param {String} s the date string to parse
+ * @returns {Date} the parsed date, or `null`
+ * @preserve
+ */
+  function sn_format_parseTimestamp(s) {
+    var result = sn.format.timestampFormat.parse(s);
+    if (!result) {
+      result = sn.format.timestampSecsFormat.parse(s);
+    }
+    return result;
+  }
   sn.api.datum.datumDate = sn_api_datum_datumDate;
   /**
  * Get a Date object for a datum. This function will return the first available date according
@@ -829,7 +843,7 @@
       } else if (d.localDate) {
         return sn.format.dateTimeFormat.parse(d.localDate + (d.localTime ? " " + d.localTime : " 00:00"));
       } else if (d.created) {
-        return sn.format.timestampFormat.parse(d.created);
+        return sn.format.parseTimestamp(d.created);
       }
     }
     return null;
@@ -4372,7 +4386,7 @@
               dataValue = dataArray[i][parent.plotPropertyName] * scale;
               if (callbackData.dateUTC === undefined && dataArray[i].created) {
                 callbackData.dateUTC = dataArray[i].created;
-                callbackData.utcDate = sn.format.timestampFormat.parse(callbackData.dateUTC);
+                callbackData.utcDate = sn.format.parseTimestamp(callbackData.dateUTC);
               }
             } else {
               dataValue = null;
