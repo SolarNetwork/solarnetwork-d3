@@ -25,7 +25,7 @@ function sn_api_datum_datumDate(d) {
 		} else if ( d.localDate ) {
 			return sn.format.dateTimeFormat.parse(d.localDate +(d.localTime ? ' ' +d.localTime : ' 00:00'));
 		} else if ( d.created ) {
-			return sn.format.timestampFormat.parse(d.created);
+			return sn.format.parseTimestamp(d.created);
 		}
 	}
 	return null;
