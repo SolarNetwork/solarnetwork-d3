@@ -31,6 +31,7 @@ function sn_api_node_availableDataRange(sourceSets, jsonClient, callback) {
 	// submit all queries to our queue
 	(function() {
 		var i,
+			j,
 			url,
 			urlHelper;
 		for ( i = 0; i < sourceSets.length; i += 1 ) {
@@ -42,9 +43,11 @@ function sn_api_node_availableDataRange(sourceSets, jsonClient, callback) {
 				urlHelper = sourceSets[i].urlHelper;
 			}
 			if ( urlHelper && urlHelper.reportableIntervalURL ) {
-				helpers.push(urlHelper);
-				url = urlHelper.reportableIntervalURL(sourceSets[i].sourceIds);
-				q.defer(jsonClient, url);
+				for ( j = 0; j < sourceSets[i].sourceIds.length; j++ ) {
+					helpers.push([urlHelper, sourceSets[i].sourceIds[j]]);
+					url = urlHelper.reportableIntervalURL(sourceSets[i].sourceIds[j]);
+					q.defer(jsonClient, url);
+				}
 			}
 		}
 	}());
@@ -57,7 +60,7 @@ function sn_api_node_availableDataRange(sourceSets, jsonClient, callback) {
 			repInterval = results[i];
 			if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
 				sn.log('No data available for {0} sources {1}',
-					helpers[i].keyDescription(), sourceSets[i].sourceIds.join(','));
+					helpers[i][0].keyDescription(), helpers[i][1]);
 				continue;
 			}
 			repInterval = repInterval.data;

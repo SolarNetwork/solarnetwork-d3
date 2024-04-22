@@ -55,16 +55,19 @@ sn.api.loc.locationUrlHelper = function(location, configuration) {
 	/**
 	 * Get a URL for the "reportable interval" for this location, optionally limited to a specific source ID.
 	 *
-	 * @param {Array} sourceIds An array of source IDs to limit query to. If not provided then all available
-	 *                sources will be returned.
+	 * @param {String} sourceId The source ID to limit query to. If an array is provided the first element
+	 *                          will be used.
 	 * @returns {String} the URL to find the reportable interval
 	 * @memberOf sn.api.loc.locationUrlHelper
 	 * @preserve
 	 */
-	function reportableIntervalURL(sourceIds) {
+	function reportableIntervalURL(sourceId) {
 		var url = (baseURL() +'/location/datum/interval?locationId=' +locationId);
-		if ( Array.isArray(sourceIds) ) {
-			url += '&sourceIds=' + sourceIds.map(function(e) { return encodeURIComponent(e); }).join(',');
+		if ( Array.isArray(sourceId) ) {
+			sourceId = sourceId[0];
+		}
+		if ( sourceId ) {
+			url += '&sourceId=' + encodeURIComponent(sourceId);
 		}
 		return url;
 	}
