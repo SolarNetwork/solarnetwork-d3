@@ -184,12 +184,13 @@
     function baseURL() {
       return hostURL() + config.path + "/api/v1/" + (config.secureQuery === true ? "sec" : "pub");
     }
-    function reportableIntervalURL(sourceIds) {
+    function reportableIntervalURL(sourceId) {
       var url = baseURL() + "/range/interval?nodeId=" + nodeId;
-      if (Array.isArray(sourceIds)) {
-        url += "&sourceIds=" + sourceIds.map(function(e) {
-          return encodeURIComponent(e);
-        }).join(",");
+      if (Array.isArray(sourceId)) {
+        sourceId = sourceId[0];
+      }
+      if (sourceId) {
+        url += "&sourceId=" + encodeURIComponent(sourceId);
       }
       return url;
     }
@@ -1385,7 +1386,7 @@
       jsonClient = d3.json;
     }
     (function() {
-      var i, url, urlHelper;
+      var i, j, url, urlHelper;
       for (i = 0; i < sourceSets.length; i += 1) {
         if (sourceSets[i].nodeUrlHelper) {
           urlHelper = sourceSets[i].nodeUrlHelper;
@@ -1395,9 +1396,11 @@
           urlHelper = sourceSets[i].urlHelper;
         }
         if (urlHelper && urlHelper.reportableIntervalURL) {
-          helpers.push(urlHelper);
-          url = urlHelper.reportableIntervalURL(sourceSets[i].sourceIds);
-          q.defer(jsonClient, url);
+          for (j = 0; j < sourceSets[i].sourceIds.length; j++) {
+            helpers.push([ urlHelper, sourceSets[i].sourceIds[j] ]);
+            url = urlHelper.reportableIntervalURL(sourceSets[i].sourceIds[j]);
+            q.defer(jsonClient, url);
+          }
         }
       }
     })();
@@ -1406,7 +1409,7 @@
       for (i = 0; i < results.length; i += 1) {
         repInterval = results[i];
         if (repInterval.data === undefined || repInterval.data.endDate === undefined) {
-          sn.log("No data available for {0} sources {1}", helpers[i].keyDescription(), sourceSets[i].sourceIds.join(","));
+          sn.log("No data available for {0} sources {1}", helpers[i][0].keyDescription(), helpers[i][1]);
           continue;
         }
         repInterval = repInterval.data;
@@ -1526,18 +1529,19 @@
     /**
 	 * Get a URL for the "reportable interval" for this location, optionally limited to a specific source ID.
 	 *
-	 * @param {Array} sourceIds An array of source IDs to limit query to. If not provided then all available
-	 *                sources will be returned.
+	 * @param {String} sourceId The source ID to limit query to. If an array is provided the first element
+	 *                          will be used.
 	 * @returns {String} the URL to find the reportable interval
 	 * @memberOf sn.api.loc.locationUrlHelper
 	 * @preserve
 	 */
-    function reportableIntervalURL(sourceIds) {
+    function reportableIntervalURL(sourceId) {
       var url = baseURL() + "/location/datum/interval?locationId=" + locationId;
-      if (Array.isArray(sourceIds)) {
-        url += "&sourceIds=" + sourceIds.map(function(e) {
-          return encodeURIComponent(e);
-        }).join(",");
+      if (Array.isArray(sourceId)) {
+        sourceId = sourceId[0];
+      }
+      if (sourceId) {
+        url += "&sourceId=" + encodeURIComponent(sourceId);
       }
       return url;
     }
