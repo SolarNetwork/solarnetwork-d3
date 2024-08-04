@@ -1962,10 +1962,22 @@
     function parseDimensions() {
       var containerWidth = sn.ui.pixelWidth(containerSelector);
       p = config.padding || [ 10, 0, 20, 30 ];
-      w = (config.width || containerWidth || 812) - p[1] - p[3];
-      h = (config.height || 300) - p[0] - p[2];
-      x = d3.time.scale.utc().range([ 0, w ]);
-      y = d3.scale.linear().range([ h, 0 ]);
+      var newW = (config.width || containerWidth || 812) - p[1] - p[3];
+      var newH = (config.height || 300) - p[0] - p[2];
+      if (!x) {
+        x = d3.time.scale.utc();
+      }
+      if (w != newW) {
+        w = newW;
+        x.range([ 0, w ]);
+      }
+      if (!y) {
+        y = d3.scale.linear();
+      }
+      if (h != newH) {
+        h = newH;
+        y.range([ h, 0 ]);
+      }
     }
     function parseConfiguration() {
       parseDimensions();
@@ -2988,21 +3000,23 @@
  */
   sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig) {
     var parent = sn.chart.baseGroupedTimeChart(containerSelector, chartConfig), superDraw = sn.util.superMethod.call(parent, "draw");
-    var self = sn.util.copyAll(parent, {
+    var self = sn_util_copyAll(parent, {
       version: "1.0.0"
     });
     self.me = self;
     var timeKeyLabels = [ "Midnight", "1am", "2am", "3am", "4am", "5am", "6am", "7am", "8am", "9am", "10am", "11am", "Noon", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "8pm", "9pm", "10pm", "11pm" ];
-    parent.x = d3.scale.ordinal().rangePoints([ 0, parent.width ], .2);
-    parent.xAxisTicks = function() {
+    self.x = d3.scale.ordinal().rangePoints([ 0, parent.width ], .2);
+    self.xAxisTicks = function() {
       return parent.x.domain();
     };
-    parent.xAxisTickFormatter = function() {
+    self.xAxisTickFormatter = function() {
       return function(d, i) {
         if (parent.xAxisTickCallback()) {
           return xAxisTickCallback().call(parent.me, d, i, parent.x);
         } else {
-          return timeKeyLabels[parent.x.domain().indexOf(d)];
+          return timeKeyLabels[parent.x.domain().findIndex(function(el) {
+            return el.getTime() === d.getTime();
+          })];
         }
       };
     };
@@ -3026,7 +3040,7 @@
       return new Date(Date.UTC(2001, 0, 1) + offset);
     }
     function timeKeyForDate(date) {
-      date.getTime();
+      return date.getTime();
     }
     function timeKeyInterval() {
       return d3.time.day.utc;
@@ -3086,7 +3100,7 @@
             if (parent.dataCallback()) {
               parent.dataCallback().call(parent.me, groupId, d);
             } else if (d.date === undefined) {
-              d.date = sn.api.datum.datumDate(d);
+              d.date = sn.format.parseTimestamp(d.created);
             }
             d.season = sn.format.seasonForDate(d.date);
             d.timeKey = timeKeyForDate(d.date);
@@ -3233,8 +3247,8 @@
         }
       }
     });
-    parent.setup = setup;
-    parent.draw = draw;
+    self.setup = setup;
+    self.draw = draw;
     return self;
   };
   /**
