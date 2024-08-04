@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue, CryptoJS, URI) {
   "use strict";
   var sn = {
-    version: "0.15.0"
+    version: "0.16.0"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
