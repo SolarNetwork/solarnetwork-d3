@@ -15,7 +15,7 @@ import "../format/seasons";
 sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseGroupedTimeChart(containerSelector, chartConfig),
 		superDraw = sn.util.superMethod.call(parent, 'draw');
-	var self = sn.util.copyAll(parent, {version : '1.0.0'});
+	var self = sn_util_copyAll(parent, {version : '1.0.0'});
 	self.me = self;
 
 	var timeKeyLabels = ['Midnight',
@@ -24,19 +24,20 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 						'1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm', '9pm', '10pm', '11pm'];
 
 	// change x scale to ordinal DOW, with a slight inset for first/last labels to fit more nicely
-	parent.x = d3.scale.ordinal()
-		.rangePoints([0, parent.width], 0.2);
+	self.x = d3.scale.ordinal().rangePoints([0, parent.width], 0.2);
 
-	parent.xAxisTicks = function() {
+	self.xAxisTicks = function() {
 		return parent.x.domain();
 	}
 
-	parent.xAxisTickFormatter = function() {
+	self.xAxisTickFormatter = function() {
 		return function(d, i) {
 			if ( parent.xAxisTickCallback() ) {
 				return xAxisTickCallback().call(parent.me, d, i, parent.x);
 			} else {
-				return timeKeyLabels[parent.x.domain().indexOf(d)];
+				return timeKeyLabels[parent.x.domain().findIndex(function(el) {
+					return el.getTime() === d.getTime();
+				})];
 			}
 		};
 	}
@@ -70,7 +71,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 	}
 
 	function timeKeyForDate(date) {
-		date.getTime();
+		return date.getTime();
 	}
 
 	function timeKeyInterval() {
@@ -151,8 +152,8 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 						if ( parent.dataCallback() ) {
 							parent.dataCallback().call(parent.me, groupId, d);
 						} else if ( d.date === undefined ) {
-							// automatically create Date
-							d.date = sn.api.datum.datumDate(d);
+							// automatically create Date (ignore any local date)
+							d.date = sn.format.parseTimestamp(d.created);
 						}
 						d.season = sn.format.seasonForDate(d.date);
 						d.timeKey = timeKeyForDate(d.date);
@@ -366,10 +367,10 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 	});
 
 	// override our setup funciton
-	parent.setup = setup;
+	self.setup = setup;
 
 	// define our drawing function
-	parent.draw = draw;
+	self.draw = draw;
 
 	return self;
 };
