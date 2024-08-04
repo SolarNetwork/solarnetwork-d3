@@ -166,10 +166,22 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 		var containerWidth = sn.ui.pixelWidth(containerSelector);
 
 		p = (config.padding || [10, 0, 20, 30]);
-		w = (config.width || containerWidth || 812) - p[1] - p[3];
-		h = (config.height || 300) - p[0] - p[2];
-    	x = d3.time.scale.utc().range([0, w]);
-		y = d3.scale.linear().range([h, 0]);
+		var newW = (config.width || containerWidth || 812) - p[1] - p[3];
+		var newH = (config.height || 300) - p[0] - p[2];
+		if ( !x ) {
+			x = d3.time.scale.utc();
+		}
+		if ( w != newW ) {
+			w = newW;
+	    	x.range([0, w]);
+		}
+		if ( !y ) {
+			y = d3.scale.linear();
+		}
+		if ( h != newH ) {
+			h = newH;
+			y.range([h, 0]);
+		}
 	}
 
 	function parseConfiguration() {
