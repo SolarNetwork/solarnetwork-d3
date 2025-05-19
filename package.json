@@ -18,21 +18,21 @@
   "license": "Apache-2.0",
   "dependencies": {
     "colorbrewer": "^0.x",
-    "crypto-js": "^3.x",
+    "crypto-js": "^4.2.0",
     "d3": "^3.x",
     "queue-async": "^1.x",
-    "uri-js": "^2.x"
+    "uri-js": "^4.4.1"
   },
   "devDependencies": {
     "smash": "^0.0.15",
-    "uglify-js": "^2.x"
+    "uglify-js": "^3.19.3"
   },
   "scripts": {
     "build": "npm run build:min",
     "prebuild:min": "npm run build:dev",
-    "build:min": "node_modules/.bin/uglifyjs --compress --mangle --source-map ${npm_package_name}.min.js.map -- ${npm_package_name}.js > ${npm_package_name}.min.js",
+    "build:min": "node_modules/.bin/uglifyjs --compress --mangle --source-map --output ${npm_package_name}.min.js ${npm_package_name}.js",
     "prebuild:dev": "rm -rf tmp && mkdir tmp",
-    "build:dev": "./node_modules/smash/smash src/sn.js |tee tmp/${npm_package_name}-smash.js |node_modules/.bin/uglifyjs - -b indent-level=2 --comments --lint > ${npm_package_name}.js",
+    "build:dev": "./node_modules/smash/smash src/sn.js |tee tmp/${npm_package_name}-smash.js |node_modules/.bin/uglifyjs -b 'indent_level=2,comments=true' --output ${npm_package_name}.js",
     "verify:imports": "bin/verify-imports.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   }
