@@ -482,7 +482,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 						dataValue = dataArray[i][parent.plotPropertyName] * scale;
 						if ( callbackData.dateUTC === undefined && dataArray[i].created ) {
 							callbackData.dateUTC = dataArray[i].created;
-							callbackData.utcDate = sn.format.timestampFormat.parse(callbackData.dateUTC);
+							callbackData.utcDate = sn.format.parseTimestamp(callbackData.dateUTC);
 						}
 					} else {
 						dataValue = null; // null to flag as missing

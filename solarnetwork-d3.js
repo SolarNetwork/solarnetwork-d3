@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue, CryptoJS, URI) {
   "use strict";
   var sn = {
-    version: "0.14.2"
+    version: "0.16.0"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -28,9 +28,7 @@
   var sn_config = {
     debug: false,
     host: "data.solarnetwork.net",
-    tls: function() {
-      return global !== undefined && global.location !== undefined && global.location.protocol !== undefined && global.location.protocol.toLowerCase().indexOf("https") === 0 ? true : false;
-    }(),
+    tls: true,
     path: "/solarquery",
     solarUserPath: "/solaruser",
     secureQuery: false
@@ -186,12 +184,13 @@
     function baseURL() {
       return hostURL() + config.path + "/api/v1/" + (config.secureQuery === true ? "sec" : "pub");
     }
-    function reportableIntervalURL(sourceIds) {
+    function reportableIntervalURL(sourceId) {
       var url = baseURL() + "/range/interval?nodeId=" + nodeId;
-      if (Array.isArray(sourceIds)) {
-        url += "&sourceIds=" + sourceIds.map(function(e) {
-          return encodeURIComponent(e);
-        }).join(",");
+      if (Array.isArray(sourceId)) {
+        sourceId = sourceId[0];
+      }
+      if (sourceId) {
+        url += "&sourceId=" + encodeURIComponent(sourceId);
       }
       return url;
     }
@@ -803,9 +802,25 @@
   sn.format = {};
   sn.format.dateTimeFormat = d3.time.format.utc("%Y-%m-%d %H:%M");
   sn.format.timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
+  sn.format.timestampSecsFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%SZ");
   sn.format.dateTimeFormatLocal = d3.time.format("%Y-%m-%d %H:%M");
   sn.format.dateTimeFormatURL = d3.time.format.utc("%Y-%m-%dT%H:%M");
   sn.format.dateFormat = d3.time.format.utc("%Y-%m-%d");
+  sn.format.parseTimestamp = sn_format_parseTimestamp;
+  /**
+ * Parse a timestamp string into a Date object.
+ * 
+ * @param {String} s the date string to parse
+ * @returns {Date} the parsed date, or `null`
+ * @preserve
+ */
+  function sn_format_parseTimestamp(s) {
+    var result = sn.format.timestampFormat.parse(s);
+    if (!result) {
+      result = sn.format.timestampSecsFormat.parse(s);
+    }
+    return result;
+  }
   sn.api.datum.datumDate = sn_api_datum_datumDate;
   /**
  * Get a Date object for a datum. This function will return the first available date according
@@ -829,7 +844,7 @@
       } else if (d.localDate) {
         return sn.format.dateTimeFormat.parse(d.localDate + (d.localTime ? " " + d.localTime : " 00:00"));
       } else if (d.created) {
-        return sn.format.timestampFormat.parse(d.created);
+        return sn.format.parseTimestamp(d.created);
       }
     }
     return null;
@@ -1371,7 +1386,7 @@
       jsonClient = d3.json;
     }
     (function() {
-      var i, url, urlHelper;
+      var i, j, url, urlHelper;
       for (i = 0; i < sourceSets.length; i += 1) {
         if (sourceSets[i].nodeUrlHelper) {
           urlHelper = sourceSets[i].nodeUrlHelper;
@@ -1381,9 +1396,11 @@
           urlHelper = sourceSets[i].urlHelper;
         }
         if (urlHelper && urlHelper.reportableIntervalURL) {
-          helpers.push(urlHelper);
-          url = urlHelper.reportableIntervalURL(sourceSets[i].sourceIds);
-          q.defer(jsonClient, url);
+          for (j = 0; j < sourceSets[i].sourceIds.length; j++) {
+            helpers.push([ urlHelper, sourceSets[i].sourceIds[j] ]);
+            url = urlHelper.reportableIntervalURL(sourceSets[i].sourceIds[j]);
+            q.defer(jsonClient, url);
+          }
         }
       }
     })();
@@ -1392,7 +1409,7 @@
       for (i = 0; i < results.length; i += 1) {
         repInterval = results[i];
         if (repInterval.data === undefined || repInterval.data.endDate === undefined) {
-          sn.log("No data available for {0} sources {1}", helpers[i].keyDescription(), sourceSets[i].sourceIds.join(","));
+          sn.log("No data available for {0} sources {1}", helpers[i][0].keyDescription(), helpers[i][1]);
           continue;
         }
         repInterval = repInterval.data;
@@ -1512,18 +1529,19 @@
     /**
 	 * Get a URL for the "reportable interval" for this location, optionally limited to a specific source ID.
 	 *
-	 * @param {Array} sourceIds An array of source IDs to limit query to. If not provided then all available
-	 *                sources will be returned.
+	 * @param {String} sourceId The source ID to limit query to. If an array is provided the first element
+	 *                          will be used.
 	 * @returns {String} the URL to find the reportable interval
 	 * @memberOf sn.api.loc.locationUrlHelper
 	 * @preserve
 	 */
-    function reportableIntervalURL(sourceIds) {
+    function reportableIntervalURL(sourceId) {
       var url = baseURL() + "/location/datum/interval?locationId=" + locationId;
-      if (Array.isArray(sourceIds)) {
-        url += "&sourceIds=" + sourceIds.map(function(e) {
-          return encodeURIComponent(e);
-        }).join(",");
+      if (Array.isArray(sourceId)) {
+        sourceId = sourceId[0];
+      }
+      if (sourceId) {
+        url += "&sourceId=" + encodeURIComponent(sourceId);
       }
       return url;
     }
@@ -1944,10 +1962,22 @@
     function parseDimensions() {
       var containerWidth = sn.ui.pixelWidth(containerSelector);
       p = config.padding || [ 10, 0, 20, 30 ];
-      w = (config.width || containerWidth || 812) - p[1] - p[3];
-      h = (config.height || 300) - p[0] - p[2];
-      x = d3.time.scale.utc().range([ 0, w ]);
-      y = d3.scale.linear().range([ h, 0 ]);
+      var newW = (config.width || containerWidth || 812) - p[1] - p[3];
+      var newH = (config.height || 300) - p[0] - p[2];
+      if (!x) {
+        x = d3.time.scale.utc();
+      }
+      if (w != newW) {
+        w = newW;
+        x.range([ 0, w ]);
+      }
+      if (!y) {
+        y = d3.scale.linear();
+      }
+      if (h != newH) {
+        h = newH;
+        y.range([ h, 0 ]);
+      }
     }
     function parseConfiguration() {
       parseDimensions();
@@ -2970,16 +3000,16 @@
  */
   sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig) {
     var parent = sn.chart.baseGroupedTimeChart(containerSelector, chartConfig), superDraw = sn.util.superMethod.call(parent, "draw");
-    var self = sn.util.copyAll(parent, {
+    var self = sn_util_copyAll(parent, {
       version: "1.0.0"
     });
     self.me = self;
     var timeKeyLabels = [ "Midnight", "1am", "2am", "3am", "4am", "5am", "6am", "7am", "8am", "9am", "10am", "11am", "Noon", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "8pm", "9pm", "10pm", "11pm" ];
-    parent.x = d3.scale.ordinal().rangePoints([ 0, parent.width ], .2);
-    parent.xAxisTicks = function() {
+    self.x = d3.scale.ordinal().rangePoints([ 0, parent.width ], .2);
+    self.xAxisTicks = function() {
       return parent.x.domain();
     };
-    parent.xAxisTickFormatter = function() {
+    self.xAxisTickFormatter = function() {
       return function(d, i) {
         if (parent.xAxisTickCallback()) {
           return xAxisTickCallback().call(parent.me, d, i, parent.x);
@@ -3010,7 +3040,7 @@
       return new Date(Date.UTC(2001, 0, 1) + offset);
     }
     function timeKeyForDate(date) {
-      date.getTime();
+      return date.getTime();
     }
     function timeKeyInterval() {
       return d3.time.day.utc;
@@ -3070,7 +3100,7 @@
             if (parent.dataCallback()) {
               parent.dataCallback().call(parent.me, groupId, d);
             } else if (d.date === undefined) {
-              d.date = sn.api.datum.datumDate(d);
+              d.date = sn.format.parseTimestamp(d.created);
             }
             d.season = sn.format.seasonForDate(d.date);
             d.timeKey = timeKeyForDate(d.date);
@@ -3217,8 +3247,8 @@
         }
       }
     });
-    parent.setup = setup;
-    parent.draw = draw;
+    self.setup = setup;
+    self.draw = draw;
     return self;
   };
   /**
@@ -4374,7 +4404,7 @@
               dataValue = dataArray[i][parent.plotPropertyName] * scale;
               if (callbackData.dateUTC === undefined && dataArray[i].created) {
                 callbackData.dateUTC = dataArray[i].created;
-                callbackData.utcDate = sn.format.timestampFormat.parse(callbackData.dateUTC);
+                callbackData.utcDate = sn.format.parseTimestamp(callbackData.dateUTC);
               }
             } else {
               dataValue = null;
