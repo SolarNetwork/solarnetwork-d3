@@ -9,4 +9,4 @@
 	}
 }(this, function(colorbrewer, d3, queue, CryptoJS, URI) {
 	'use strict';
-	var sn = {version: "0.16.0"};
+	var sn = {version: "0.16.1"};

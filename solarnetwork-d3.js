@@ -9,7 +9,7 @@
 })(this, function(colorbrewer, d3, queue, CryptoJS, URI) {
   "use strict";
   var sn = {
-    version: "0.16.0"
+    version: "0.16.1"
   };
   sn.api = {};
   var sn_api_timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
@@ -17,12 +17,15 @@
   sn.api.user = {};
   sn.api.node = {};
   var global = function() {
+    // Workers don’t have `window`, only `self`
     if (typeof self !== "undefined") {
       return self;
     }
     if (typeof global !== "undefined") {
       return global;
     }
+    // Not all environments allow eval and Function
+    // Use only as a last resort:
     return new Function("return this")();
   }();
   var sn_config = {
@@ -139,10 +142,12 @@
     if (!(Array.isArray(a1) && Array.isArray(a2))) {
       return false;
     }
+    // compare lengths first
     if (a1.length !== a2.length) {
       return false;
     }
     for (i = 0, len = a1.length; i < len; i += 1) {
+      // support nested arrays
       if (Array.isArray(a1[i]) && Array.isArray(a2[i]) && arraysAreEqual(a1[i], a2[i]) !== true) {
         return false;
       } else if (a1[i] !== a2[i]) {
@@ -167,6 +172,15 @@
   }
   sn.api.node.registerUrlHelperFunction = sn_api_node_registerUrlHelperFunction;
   var sn_api_node_urlHelperFunctions;
+  /**
+ * A node-specific URL utility object.
+ *
+ * @class
+ * @constructor
+ * @param {Number} node The node ID to use.
+ * @param {Object} configuration The configuration options to use.
+ * @returns {sn.api.node.nodeUrlHelper}
+ */
   sn.api.node.nodeUrlHelper = function(node, configuration) {
     var that = {
       version: "1.1.0"
@@ -178,12 +192,32 @@
       path: "/solarquery",
       secureQuery: false
     });
+    /**
+	 * Get a URL for just the SolarNet host, without any path.
+	 *
+	 * @returns {String} the URL to the SolarNet host
+	 * @memberOf sn.api.node.nodeUrlHelper
+	 */
     function hostURL() {
       return "http" + (config.tls === true ? "s" : "") + "://" + config.host;
     }
+    /**
+	 * Get a URL for the SolarNet host and the base API path, e.g. <code>/solarquery/api/v1/sec</code>.
+	 *
+	 * @returns {String} the URL to the SolarNet base API path
+	 * @memberOf sn.api.node.nodeUrlHelper
+	 */
     function baseURL() {
       return hostURL() + config.path + "/api/v1/" + (config.secureQuery === true ? "sec" : "pub");
     }
+    /**
+	 * Get a URL for the "reportable interval" for this node, optionally limited to a specific source ID.
+	 *
+	 * @param {String} sourceId The source ID to limit query to. If an array is provided the first element
+	 *                          will be used.
+	 * @returns {String} the URL to find the reportable interval
+	 * @memberOf sn.api.node.nodeUrlHelper
+	 */
     function reportableIntervalURL(sourceId) {
       var url = baseURL() + "/range/interval?nodeId=" + nodeId;
       if (Array.isArray(sourceId)) {
@@ -194,6 +228,14 @@
       }
       return url;
     }
+    /**
+	 * Get a available source IDs for this node, optionally limited to a date range.
+	 *
+	 * @param {Date} startDate An optional start date to limit the results to.
+	 * @param {Date} endDate An optional end date to limit the results to.
+	 * @returns {String} the URL to find the available source
+	 * @memberOf sn.api.node.nodeUrlHelper
+	 */
     function availableSourcesURL(startDate, endDate) {
       var url = baseURL() + "/range/sources?nodeId=" + nodeId;
       if (startDate !== undefined) {
@@ -204,6 +246,17 @@
       }
       return url;
     }
+    /**
+	 * Generate a SolarNet {@code /datum/list} URL.
+	 *
+	 * @param {Date} startDate The starting date for the query, or <em>null</em> to omit
+	 * @param {Date} endDate The ending date for the query, or <em>null</em> to omit
+	 * @param {String|Number} agg A supported aggregate type (e.g. Hour, Day, etc) or a minute precision Number
+	 * @param {Array} sourceIds Array of source IDs to limit query to
+	 * @param {Object} pagination An optional pagination object, with <code>offset</code> and <code>max</code> properties.
+	 * @return {String} the URL to perform the list with
+	 * @memberOf sn.api.node.nodeUrlHelper
+	 */
     function dateTimeListURL(startDate, endDate, agg, sourceIds, pagination) {
       var url = baseURL() + "/datum/list?nodeId=" + nodeId;
       if (startDate) {
@@ -230,6 +283,13 @@
       }
       return url;
     }
+    /**
+	 * Generate a SolarNet {@code /datum/mostRecent} URL.
+	 *
+	 * @param {Array} sourceIds Array of source IDs to limit query to
+	 * @return {String} the URL to perform the most recent query with
+	 * @memberOf sn.api.node.nodeUrlHelper
+	 */
     function mostRecentURL(sourceIds) {
       var url = baseURL() + "/datum/mostRecent?nodeId=" + nodeId;
       if (Array.isArray(sourceIds)) {
@@ -239,14 +299,28 @@
       }
       return url;
     }
+    /**
+	 * Get or set the node ID to use.
+	 *
+	 * @param {String} [value] the node ID to use
+	 * @return when used as a getter, the node ID, otherwise this object
+	 * @memberOf sn.api.node.nodeUrlHelper
+	 */
     function nodeID(value) {
       if (!arguments.length) return nodeId;
       nodeId = value;
       return that;
     }
+    /**
+	 * Get a description of this helper object.
+	 *
+	 * @return {String} The description of this object.
+	 * @memberOf sn.api.node.nodeUrlHelper
+	 */
     function keyDescription() {
       return "node " + nodeId;
     }
+    // setup core properties
     Object.defineProperties(that, {
       secureQuery: {
         get: function() {
@@ -285,6 +359,7 @@
         value: mostRecentURL
       }
     });
+    // allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
     (function() {
       if (Array.isArray(sn_api_node_urlHelperFunctions)) {
         sn_api_node_urlHelperFunctions.forEach(function(helper) {
@@ -300,6 +375,13 @@
     })();
     return that;
   };
+  /**
+ * Register a custom function to generate URLs with {@link sn.api.node.nodeUrlHelper}.
+ *
+ * @param {String} name The name to give the custom function. By convention the function
+ *                      names should end with 'URL'.
+ * @param {Function} func The function to add to sn.api.node.nodeUrlHelper instances.
+ */
   function sn_api_node_registerUrlHelperFunction(name, func) {
     if (typeof func !== "function") {
       return;
@@ -380,6 +462,7 @@
       var url = baseURL() + "/nodes";
       return url;
     }
+    // setup core properties
     Object.defineProperties(self, {
       keyDescription: {
         value: keyDescription
@@ -394,6 +477,7 @@
         value: viewNodesURL
       }
     });
+    // allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
     (function() {
       if (Array.isArray(sn_api_user_urlHelperFunctions)) {
         sn_api_user_urlHelperFunctions.forEach(function(helper) {
@@ -430,6 +514,9 @@
       func: func
     });
   }
+  /*
+ * Node URL helper functions
+ */
   sn_api_node_registerUrlHelperFunction("viewInstruction", sn_api_user_viewInstruction);
   sn_api_node_registerUrlHelperFunction("viewActiveInstructionsURL", sn_api_user_viewActiveInstructionsURL);
   sn_api_node_registerUrlHelperFunction("viewPendingInstructionsURL", sn_api_user_viewPendingInstructionsURL);
@@ -465,6 +552,13 @@
     return url;
   }
   sn_api_node_registerUrlHelperFunction("viewNodeMetadataURL", sn_api_user_viewNodeMetadataURL);
+  /**
+ * Generate a URL for viewing the configured node's metadata.
+ *
+ * The configured <code>nodeId</code> property will be used.
+ *
+ * @returns {String} the URL
+ */
   function sn_api_user_viewNodeMetadataURL() {
     return sn_api_user_baseURL(this) + "/nodes/meta/" + this.nodeId;
   }
@@ -528,6 +622,7 @@
       var pendingState = lastKnownInstructionState();
       var pendingValue = lastKnownInstructionValue();
       if (pendingState === "Queued" && pendingValue !== desiredValue) {
+        // cancel the pending instruction
         sn.log("Canceling {2} pending control {0} switch to {1}", controlID, pendingValue, nodeUrlHelper.keyDescription());
         q.defer(secHelper.json, nodeUrlHelper.updateInstructionStateURL(lastKnownInstruction.id, "Declined"), "POST");
         lastKnownInstruction = undefined;
@@ -548,17 +643,23 @@
           return;
         }
         if (results.length < 1) {
+          // we queued nothing
           return;
         }
         var cancelResult = results[0];
+        // note == null check here, which handles either undefined or null
         if (cancelResult.data == null && cancelResult.success === true) {
+          // it was cancelled
           lastKnownInstruction = undefined;
         }
         var instructionResult = results[results.length - 1].data;
         if (!(instructionResult == null)) {
+          // this is the last know instruction now
           lastKnownInstruction = instructionResult;
         }
+        // invoke the client callback so they know the instruction state has changed
         notifyDelegate();
+        // reset timer to start polling at pendingRefreshMs rate
         if (timer) {
           self.stop();
           self.start(currentRefreshMs());
@@ -573,6 +674,7 @@
       } else if (!controlStatus) {
         return Number(instruction.parameters[0].value);
       }
+      // return the newer value
       statusDate = sn_api_timestampFormat.parse(controlStatus.created);
       instructionDate = sn_api_timestampFormat.parse(instruction.created);
       return statusDate.getTime() > instructionDate.getTime() ? controlStatus.val : Number(instruction.parameters[0].value);
@@ -583,6 +685,8 @@
       if (secHelper.hasTokenCredentials() === true) {
         q.defer(secHelper.json, nodeUrlHelper.viewPendingInstructionsURL(), "GET");
         if (lastKnownInstruction && [ "Completed", "Declined" ].indexOf(lastKnownInstructionState()) < 0) {
+          // also refresh this specific instruction, to know when it goes to Completed so we can
+          // assume the control value has changed, even if the mostRecent data lags behind
           q.defer(secHelper.json, nodeUrlHelper.viewInstruction(lastKnownInstruction.id));
         }
       }
@@ -591,6 +695,7 @@
           sn.log("Error querying control toggler {0} for {2} status: {1}", controlID, error.status, nodeUrlHelper.keyDescription());
           notifyDelegate(error);
         } else {
+          // get current status of control
           var i, len;
           var controlStatus = undefined;
           if (status.data && Array.isArray(status.data.results)) {
@@ -600,6 +705,7 @@
               }
             }
           }
+          // get current instruction (if any)
           var execInstruction = executing ? executing.data : undefined;
           var pendingInstruction = active ? getActiveInstruction(active.data) : undefined;
           var newValue = mostRecentValue(controlStatus, execInstruction ? execInstruction : pendingInstruction ? pendingInstruction : lastKnownInstruction);
@@ -608,13 +714,15 @@
             sn.log("Control {0} for {1} value is currently {2}", controlID, nodeUrlHelper.keyDescription(), newValue !== undefined ? newValue : "N/A");
             lastKnownStatus = controlStatus;
             if (lastKnownStatus && !pendingInstruction) {
-              lastKnownStatus.val = newValue;
+              lastKnownStatus.val = newValue; // force this, because instruction value might be newer than status value
             }
             lastKnownInstruction = execInstruction ? execInstruction : pendingInstruction;
             lastHadCredentials = secHelper.hasTokenCredentials();
+            // invoke the client callback so they know the data has been updated
             notifyDelegate();
           }
         }
+        // if timer was defined, keep going as if interval set
         if (timer !== undefined) {
           timer = setTimeout(update, currentRefreshMs());
         }
@@ -726,9 +834,11 @@
       pendingInstructionState: {
         value: lastKnownInstructionState
       },
+      // deprecated, use lastKnownInstructionState
       pendingInstructionValue: {
         value: lastKnownInstructionValue
       },
+      // deprecated, use lastKnownInstructionValue
       lastKnownInstructionState: {
         value: lastKnownInstructionState
       },
@@ -762,6 +872,7 @@
  * @preserve
  */
   function sn_api_datum_aggregateNestedDataLayers(layerData, resultKey, copyProperties, sumProperties, staticProperties) {
+    // combine all layers into a single source
     var layerCount = layerData.length, dataLength, i, j, k, copyPropLength = copyProperties.length, sumPropLength = sumProperties.length, d, val, clone, array;
     dataLength = layerData[0].values.length;
     if (dataLength > 0) {
@@ -817,6 +928,7 @@
   function sn_format_parseTimestamp(s) {
     var result = sn.format.timestampFormat.parse(s);
     if (!result) {
+      // try without fractional second
       result = sn.format.timestampSecsFormat.parse(s);
     }
     return result;
@@ -877,14 +989,16 @@
     var jsonClient = d3.json;
     var finishedCallback;
     var urlParameters;
-    var state = 0;
+    var state = 0; // keys are source IDs, values are 1:loading, 2:done
     var results;
+    // setup core properties
     Object.defineProperties(that, {
       version: {
         value: "1.1.0"
       }
     });
     function load(callback) {
+      // to support queue use, allow callback to be passed directly to this function
       if (typeof callback === "function") {
         finishedCallback = callback;
       }
@@ -893,7 +1007,8 @@
       return load;
     }
     function requestCompletionHandler(error) {
-      state = 2;
+      state = 2; // done
+      // check if we're all done loading, and if so call our callback function
       if (finishedCallback) {
         finishedCallback.call(that, error, results);
       }
@@ -939,6 +1054,7 @@
         } else {
           results = results.concat(dataArray);
         }
+        // see if we need to load more results
         nextOffset = offsetExtractor(json);
         if (nextOffset > 0) {
           loadData(nextOffset);
@@ -1037,6 +1153,7 @@
     function exclusiveEndDate(time, date) {
       var result = time.utc.ceil(date);
       if (result.getTime() === date.getTime()) {
+        // already on exact aggregate, so round up to next
         result = time.offset(result, 1);
       }
       return result;
@@ -1084,6 +1201,7 @@
       end = exclusiveEndDate(d3.time.day, endDate);
       start = d3.time.month.utc.offset(d3.time.day.utc.floor(endDate), -timeCount);
     } else {
+      // assume Hour
       timeCount = timeCountValue("numDays");
       timeUnit = "day";
       end = exclusiveEndDate(d3.time.hour, endDate);
@@ -1113,6 +1231,7 @@
     that.version = "1.0.0";
     var finishedCallback, q = queue();
     function load(callback) {
+      // to support queue use, allow callback to be passed directly to this function
       if (typeof callback === "function") {
         finishedCallback = callback;
       }
@@ -1198,6 +1317,7 @@
  */
   function sn_api_datum_nestedStackDataNormalizeByDate(layerData, fillTemplate, fillFn) {
     var i = 0, j, k, jMax = layerData.length - 1, dummy, prop, copyIndex;
+    // fill in "holes" for each stack, if more than one stack. we assume data already sorted by date
     if (jMax > 0) {
       while (i < d3.max(layerData.map(function(e) {
         return e.values.length;
@@ -1284,6 +1404,7 @@
         if (callback) {
           callback.call(that, aggValue);
         }
+        // if timer was defined, keep going as if interval set
         if (timer !== undefined) {
           timer = setTimeout(update, refreshMs);
         }
@@ -1385,6 +1506,7 @@
       callback = jsonClient;
       jsonClient = d3.json;
     }
+    // submit all queries to our queue
     (function() {
       var i, j, url, urlHelper;
       for (i = 0; i < sourceSets.length; i += 1) {
@@ -1416,6 +1538,8 @@
         if (result === undefined) {
           result = repInterval;
         } else {
+          // merge start/end dates
+          // note we don't copy the time zone... this breaks when the tz are different!
           if (repInterval.endDateMillis > result.endDateMillis) {
             result.endDateMillis = repInterval.endDateMillis;
             result.endDate = repInterval.endDate;
@@ -1436,6 +1560,7 @@
       var intervalObj = extractReportableInterval(results);
       if (intervalObj.startDateMillis !== undefined) {
         intervalObj.sDate = new Date(intervalObj.startDateMillis);
+        //intervalObj.sLocalDate = sn.format.dateTimeFormatLocal.parse(intervalObj.startDate);
       }
       if (intervalObj.endDateMillis !== undefined) {
         intervalObj.eDate = new Date(intervalObj.endDateMillis);
@@ -1642,6 +1767,7 @@
     function keyDescription() {
       return "node " + nodeId;
     }
+    // setup core properties
     Object.defineProperties(that, {
       keyDescription: {
         value: keyDescription
@@ -1674,6 +1800,7 @@
         value: mostRecentURL
       }
     });
+    // allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
     (function() {
       if (Array.isArray(sn_api_loc_urlHelperFunctions)) {
         sn_api_loc_urlHelperFunctions.forEach(function(helper) {
@@ -1786,6 +1913,7 @@
         return this;
       }
       if (val === undefined) {
+        // in 1-argument mode, toggle current value
         val = this.map[key] === undefined;
       }
       return this.value(key, val === true ? true : null);
@@ -1830,6 +1958,13 @@
   };
   sn.ui = {};
   sn.ui.pixelWidth = sn_ui_pixelWidth;
+  /**
+ * Get the width of an element based on a selector, in pixels.
+ * 
+ * @param {string} selector - a selector to an element to get the width of
+ * @returns {number} the width, or {@code undefined} if {@code selector} is undefined, 
+ *                   or {@code null} if the width cannot be computed in pixels
+ */
   function sn_ui_pixelWidth(selector) {
     if (selector === undefined) {
       return undefined;
@@ -1856,17 +1991,24 @@
     var internalPropName = "__internal__";
     var aggregates = [ "FiveMinute", "TenMinute", "FifteenMinute", "Hour", "HourOfDay", "SeasonalHourOfDay", "Day", "DayOfWeek", "SeasonalDayOfWeek", "Month" ];
     var config = chartConfig || new sn.Configuration();
-    var p, w, h, x, y;
+    var p, // padding
+    w, // width
+    h, // height
+    x, // d3.time.scale
+    y; // d3.scale.linear
+    // String, one of supported SolarNet aggregate types: Month, Day, Hour, or Minute
     var aggregateType;
+    // mapping of aggregateType keys to associated data property names, e.g. 'watts' or 'wattHours'
     var plotProperties;
-    var transitionMs;
-    var ruleOpacity;
-    var vertRuleOpacity;
+    var transitionMs; // will default to 600
+    var ruleOpacity; // will default to 0.1
+    var vertRuleOpacity; // will default to 0.05
     var svgRoot, svgTickGroupX, svgDataRoot, svgRuleRoot, svgAnnotRoot, svgHoverRoot, svgPointerCapture;
-    var displayFactorCallback = undefined;
-    var drawAnnotationsCallback = undefined;
-    var xAxisTickCallback = undefined;
+    var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
+    var drawAnnotationsCallback = undefined; // function accepts (svgAnnotRoot)
+    var xAxisTickCallback = undefined; // function accepts (d, i, x, numTicks)
     var hoverEnterCallback = undefined, hoverMoveCallback = undefined, hoverLeaveCallback = undefined, rangeSelectionCallback = undefined, doubleClickCallback = undefined;
+    // keep track of callback handlers attached to specific events
     var userInteractionHandlerCount = function() {
       var counts = {};
       Object.keys(sn.tapEventNames).forEach(function(n) {
@@ -1877,11 +2019,13 @@
     var lastUserInteractionInfo = {
       time: 0
     };
+    // display units in kW if domain range > 1000
     var displayFactor = 1;
     var displayFormatter = d3.format(",d");
     var xAxisTickCount = 12;
     var yAxisTickCount = 5;
     var draw = function() {
+      // extending classes should do something here...
       drawAxisX();
       drawAxisY();
     };
@@ -1939,12 +2083,14 @@
       var event = d3.event, time = new Date().getTime(), dt = time - lastUserInteractionInfo.time, that = this;
       lastUserInteractionInfo.time = time;
       if (event.type === "dblclick" || sn.hasTouchSupport && dt < 500) {
+        // double click
         if (lastUserInteractionInfo.timer) {
           clearTimeout(lastUserInteractionInfo.timer);
           delete lastUserInteractionInfo.timer;
         }
         handleDoubleClick.call(that);
       } else if (sn.hasTouchSupport) {
+        // set timeout for single click
         lastUserInteractionInfo.timer = setTimeout(function() {
           var prevEvent = d3.event;
           try {
@@ -1960,6 +2106,7 @@
       }
     }
     function parseDimensions() {
+      // default to container's width, if we can
       var containerWidth = sn.ui.pixelWidth(containerSelector);
       p = config.padding || [ 10, 0, 20, 30 ];
       var newW = (config.width || containerWidth || 812) - p[1] - p[3];
@@ -1988,6 +2135,7 @@
       vertRuleOpacity = config.value("vertRuleOpacity") || .05;
     }
     function setupSVG() {
+      // if the passed in container *is* a svg element already, just use that directly
       svgRoot = d3.select(containerSelector);
       if (svgRoot.node() && svgRoot.node().tagName.toLowerCase() !== "svg") {
         svgRoot = svgRoot.select("svg");
@@ -2034,9 +2182,11 @@
       return plotProperties[aggregateType] + "Reverse";
     }
     function setup() {
+      // extending classes should do something here...
       computeUnitsY();
     }
     function axisYTransform(d) {
+      // align to half-pixels, to 1px line is aligned to pixels and crisp
       return "translate(0," + (Math.round(y(d) + .5) - .5) + ")";
     }
     function axisRuleClassY(d) {
@@ -2067,6 +2217,7 @@
       }
       var ticks = xAxisTicks();
       var fx = xAxisTickFormatter();
+      // Generate x-ticks
       var labels = svgTickGroupX.selectAll("text").data(ticks).classed({
         major: axisXTickClassMajor
       });
@@ -2074,6 +2225,7 @@
       labels.enter().append("text").attr("dy", "-0.5em").style("opacity", 1e-6).attr("x", x).classed({
         major: axisXTickClassMajor
       }).transition().duration(transitionMs).style("opacity", 1).text(fx).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null);
       });
       labels.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
@@ -2092,6 +2244,7 @@
       entered.append("line").attr("x2", w + p[3]).attr("x1", p[3]).attr("class", axisRuleClassY);
       entered.append("text").attr("x", p[3] - 10).text(displayFormat).attr("class", axisTextClassY);
       entered.transition().duration(transitionMs).style("opacity", 1).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null);
       });
     }
@@ -2189,9 +2342,9 @@
         return 1e3 * 60 * 60 * 24;
       }
       if (aggregateType === "Month") {
-        return 1e3 * 60 * 60 * 24 * 30;
+        return 1e3 * 60 * 60 * 24 * 30; // NOTE: this is approximate!
       }
-      return 1e3 * 60;
+      return 1e3 * 60; // otherwise, default to minute duration
     };
     /**
 	 * Test if two dates are the expected aggregate normalized duration apart.
@@ -2209,15 +2362,18 @@
       if (diff === expectedDiff) {
         return true;
       }
+      // make sure d1 < d2
       if (d2.getTime() < d1.getTime()) {
         v1 = d1;
         d1 = d2;
         d2 = v1;
       }
       if (aggregateType === "Month") {
+        // test if months are only 1 apart
         return d3.time.month.utc.offset(d1, 1).getTime() === d2.getTime();
       }
       if (aggregateType === "SeasonalHourOfDay") {
+        // test just if hour only 1 apart
         v1 = d1.getUTCHours() + 1;
         if (v1 > 23) {
           v1 = 0;
@@ -2225,6 +2381,7 @@
         return d2.getUTCHours() === v1 && d1.getTime() !== d2.getTime();
       }
       if (aggregateType === "SeasonalDayOfWeek") {
+        // test just if DOW only 1 apart
         v1 = d1.getUTCDay() + 1;
         if (v1 > 6) {
           v1 = 0;
@@ -2290,7 +2447,7 @@
 	 */
     self.transitionMs = function(value) {
       if (!arguments.length) return transitionMs;
-      transitionMs = +value;
+      transitionMs = +value; // the + used to make sure we have a Number
       return me;
     };
     /**
@@ -2527,6 +2684,7 @@
     parseConfiguration();
     setupSVG();
     Object.defineProperties(self, {
+      // extending classes should re-define this property so method chaining works
       me: {
         get: function() {
           return me;
@@ -2626,6 +2784,7 @@
       svgTickGroupX: {
         value: svgTickGroupX
       },
+      // interactive support
       svgHoverRoot: {
         get: function() {
           return svgHoverRoot;
@@ -2721,12 +2880,15 @@
     var parent = sn.chart.baseTimeChart(containerSelector, chartConfig), superReset = parent.reset;
     var self = sn_util_copyAll(parent);
     self.me = self;
+    // raw data, by groupId
     var originalData = {};
+    // a numeric scale factor, by groupId
     var scaleFactors = {};
     var dataCallback = undefined;
-    var colorCallback = undefined;
-    var sourceExcludeCallback = undefined;
-    var layerPostProcessCallback = undefined;
+    var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
+    var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
+    var layerPostProcessCallback = undefined; // function accepts (groupId, result of d3.nest()) and should return same structure
+    // our computed layer data
     var groupIds = [];
     var otherData = {};
     function fillColor(groupId, d, i) {
@@ -2864,6 +3026,7 @@
           v = scaleFactors[groupId];
           return v === undefined ? 1 : v;
         }
+        // for a single Object argument, reset all scaleFactors
         scaleFactors = groupId;
       } else if (arguments.length == 2) {
         scaleFactors[groupId] = value;
@@ -2946,6 +3109,7 @@
       return self.me;
     };
     Object.defineProperties(self, {
+      // extending classes should re-define this property so method chaining works
       fillColor: {
         value: fillColor
       },
@@ -3005,6 +3169,7 @@
     });
     self.me = self;
     var timeKeyLabels = [ "Midnight", "1am", "2am", "3am", "4am", "5am", "6am", "7am", "8am", "9am", "10am", "11am", "Noon", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "8pm", "9pm", "10pm", "11pm" ];
+    // change x scale to ordinal DOW, with a slight inset for first/last labels to fit more nicely
     self.x = d3.scale.ordinal().rangePoints([ 0, parent.width ], .2);
     self.xAxisTicks = function() {
       return parent.x.domain();
@@ -3019,8 +3184,11 @@
           })];
         }
       };
-    };
+    }
+    // Boolean, true for northern hemisphere seasons, false for southern.
+    ;
     var northernHemisphere;
+    // object keys define group IDs to treat as "negative" or consumption values, below the X axis
     var negativeGroupMap = {
       Consumption: true
     };
@@ -3031,7 +3199,7 @@
       return Math.round(parent.y(d.y) + .5) - .5;
     });
     function seasonColorFn(d, i) {
-      !d;
+      !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
       var seasonColors = parent.config.seasonColors || sn.color.colors.seasonColors;
       var season = (i + (northernHemisphere ? 0 : 2)) % 4;
       return seasonColors[season];
@@ -3045,11 +3213,17 @@
     function timeKeyInterval() {
       return d3.time.day.utc;
     }
+    /**
+	 * A rollup function for d3.dest(), that aggregates the plot property value and
+	 * returns objects in the form <code>{ date : Date(..), y : Number, plus : Number, minus : Number }</code>.
+	 */
     function nestRollupAggregateSum(array) {
+      // Note: we don't use d3.sum here because we want to end up with a null value for "holes"
       var sum = null, plus = null, minus = null, d, v, i, len = array.length, groupId, negate = false, minX, maxX;
       for (i = 0; i < len; i += 1) {
         d = array[i];
         groupId = d[parent.internalPropName].groupId;
+        // ignore excluded sources...
         if (parent.sourceExcludeCallback() && parent.sourceExcludeCallback().call(parent.me, groupId, d.sourceId)) {
           continue;
         }
@@ -3085,7 +3259,7 @@
       };
     }
     function setup() {
-      var groupIds = parent.groupIds, rangeX = [ null, null ], rangeY = [ 0, 0 ], interval = timeKeyInterval(), keyFormatter = d3.format("02g");
+      var groupIds = parent.groupIds, rangeX = [ null, null ], rangeY = [ 0, 0 ], interval = timeKeyInterval(), keyFormatter = d3.format("02g"); // ensure 10 sorts after 9
       groupLayers = {};
       groupIds.forEach(function(groupId) {
         var layerData, rawGroupData = parent.data(groupId), layerValues, range;
@@ -3100,6 +3274,7 @@
             if (parent.dataCallback()) {
               parent.dataCallback().call(parent.me, groupId, d);
             } else if (d.date === undefined) {
+              // automatically create Date (ignore any local date)
               d.date = sn.format.parseTimestamp(d.created);
             }
             d.season = sn.format.seasonForDate(d.date);
@@ -3116,6 +3291,7 @@
           layerData = parent.layerPostProcessCallback().call(parent.me, groupId, layerData);
         }
         groupLayers[groupId] = layerData;
+        // calculate min/max values
         layerValues = layerData.reduce(function(prev, d) {
           return prev.concat(d.values.map(function(d) {
             return d.values;
@@ -3140,7 +3316,9 @@
           rangeX[1] = new Date(range[1]);
         }
       });
+      // setup X domain
       parent.x.domain(interval.range(rangeX[0], interval.offset(rangeX[1], 1)));
+      // setup Y domain
       parent.y.domain(rangeY).nice();
       parent.computeUnitsY();
     }
@@ -3152,12 +3330,15 @@
       var axisLines = parent.svgRuleRoot.selectAll("line.vert").data(parent.x.domain());
       axisLines.transition().duration(transitionMs).attr("x1", axisXVertRule).attr("x2", axisXVertRule);
       axisLines.enter().append("line").style("opacity", 1e-6).classed("vert", true).attr("x1", axisXVertRule).attr("x2", axisXVertRule).attr("y1", 0).attr("y2", parent.height).transition().duration(transitionMs).style("opacity", parent.vertRuleOpacity()).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null);
       });
       axisLines.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
     }
     function setupDrawData() {
-      var groupedData = [ [], [], [], [] ], groupIds = parent.groupIds;
+      var groupedData = [ [], [], [], [] ], // one group per season
+      groupIds = parent.groupIds;
+      // construct a 3D array of our data, to achieve a group/source/datum hierarchy;
       groupIds.forEach(function(groupId) {
         var groupLayer = groupLayers[groupId];
         if (groupLayer) {
@@ -3176,6 +3357,7 @@
     function draw() {
       var transitionMs = parent.transitionMs(), seasons, lines, drawData;
       drawData = setupDrawData();
+      // we create groups for each season
       seasons = parent.svgDataRoot.selectAll("g.season").data(drawData.groupedData);
       seasons.enter().append("g").attr("class", "season").style("stroke", seasonColorFn);
       lines = seasons.selectAll("path.line").data(Object, function(d) {
@@ -3187,15 +3369,31 @@
       superDraw();
       drawAxisXRules();
     }
+    /**
+	 * Toggle between nothern/southern hemisphere seasons, or get the current setting.
+	 *
+	 * @param {boolean} [value] <em>true</em> for northern hemisphere seasons, <em>false</em> for sothern hemisphere
+	 * @returns when used as a getter, the current setting
+	 * @memberOf sn.chart.baseGroupedSeasonalLineChart
+	 */
     self.northernHemisphere = function(value) {
       if (!arguments.length) return northernHemisphere;
       if (value === northernHemisphere) {
         return parent.me;
       }
       northernHemisphere = value === true;
+      // immediately update path colors
       parent.svgDataRoot.selectAll("g.season").transition().duration(parent.transitionMs()).style("stroke", seasonColorFn);
       return parent.me;
     };
+    /**
+	 * Get or set an array of group IDs to treat as negative group IDs, that appear below
+	 * the X axis.
+	 *
+	 * @param {Array} [value] the array of group IDs to use
+	 * @return {Array} when used as a getter, the list of group IDs currently used, otherwise this object
+	 * @memberOf sn.chart.baseGroupedSeasonalLineChart
+	 */
     self.negativeGroupIds = function(value) {
       if (!arguments.length) {
         return function() {
@@ -3214,6 +3412,14 @@
       });
       return parent.me;
     };
+    /**
+	 * Get/set the x-axis time-based key names.
+	 *
+	 * @param {String[]} [value] the ordinal key names
+	 * @return if used as a getter an array with the keys, which are used as labels for the x-axis,
+	 *         otherwise this object
+	 * @memberOf sn.chart.baseGroupedSeasonalLineChart
+	 */
     self.timeKeyLabels = function(value) {
       if (!arguments.length) return timeKeyLabels;
       if (Array.isArray(value)) {
@@ -3247,7 +3453,9 @@
         }
       }
     });
+    // override our setup funciton
     self.setup = setup;
+    // define our drawing function
     self.draw = draw;
     return self;
   };
@@ -3269,17 +3477,22 @@
     var self = sn_util_copyAll(parent);
     self.me = self;
     var discardId = "__discard__";
+    // the d3 stack offset method, or function
     var stackOffset = undefined;
+    // toggle on/off the reverse plot property support
     var negativeOffsetFromReversePlotProperty = true;
+    // our computed layer data
     var groupLayers = {};
+    // useful to change to true for line-based charts
     var normalizeDataTimeGaps = false;
     function parseConfiguration() {
       superParseConfiguration();
       stackOffset = self.config.value("wiggle") === true ? "wiggle" : "zero";
       negativeOffsetFromReversePlotProperty = self.config.value("reverseValueSupport") === true ? true : false;
     }
+    // get the opacity level for a given group
     function groupOpacityFn(d, i) {
-      !d;
+      !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
       var grade = self.config.value("opacityReduction") || .1;
       return 1 - i * grade;
     }
@@ -3289,6 +3502,8 @@
         fn = d3.layout.stack().offset(stackOffset).offset();
       } else {
         fn = function(data) {
+          // data is 3d array: 1) layers 2) time 3) [x,y];
+          // we return 2d array based on time dimension of overall layer offset
           var i, iLen = data[0].length, j, jLen = data.length, sum, val, valR, y0 = [];
           for (i = 0; i < iLen; i += 1) {
             sum = 0;
@@ -3297,9 +3512,9 @@
               valR = negativeOffsetFromReversePlotProperty ? layerData[j].values[i][plotReversePropName] : 0;
               if (val < 0) {
                 sum += val;
-                data[j][i][1] = -val;
+                data[j][i][1] = -val; // flip the height of the stack back to positive
               } else if (valR) {
-                sum -= valR;
+                sum -= valR; // shift column; height already adjusted in stack.y function
               }
             }
             y0[i] = sum;
@@ -3340,9 +3555,11 @@
             if (self.dataCallback()) {
               self.dataCallback().call(self.me, groupId, d);
             } else if (d.date === undefined) {
+              // automatically create Date
               d.date = sn.api.datum.datumDate(d);
             }
           }
+          // remove excluded sources...
           if (self.sourceExcludeCallback()) {
             if (self.sourceExcludeCallback().call(self.me, groupId, d.sourceId)) {
               return discardId;
@@ -3350,12 +3567,14 @@
           }
           return d.sourceId;
         }).sortKeys(d3.ascending).entries(rawGroupData);
+        // remove discarded sources...
         layerData = layerData.filter(function(d) {
           return d.key !== discardId;
         });
         if (layerData.length < 1) {
           return;
         }
+        // fill in "holes" for each stack layer, if more than one layer. we assume data already sorted by date
         dummy = {};
         dummy[plotPropName] = null;
         dummy[self.internalPropName] = {
@@ -3363,6 +3582,7 @@
         };
         sn.api.datum.nestedStackDataNormalizeByDate(layerData, dummy);
         if (normalizeDataTimeGaps === true) {
+          // now look to fill in "zero" values to make interpolation look better
           parent.insertNormalizedDurationIntoLayerData(layerData);
         }
         if (self.layerPostProcessCallback()) {
@@ -3375,7 +3595,7 @@
         if (maxX === undefined || rangeX[1].getTime() > maxX.getTime()) {
           maxX = rangeX[1];
         }
-        stack.offset(internalStackOffsetFn(layerData));
+        stack.offset(internalStackOffsetFn(layerData)); // pass layer data to offset, to calculate reverse and negative shifts
         var layers = stack(layerData);
         groupLayers[groupId] = layers;
         var rangeY = [ d3.min(layers[0].values, function(d) {
@@ -3390,9 +3610,11 @@
           maxY = rangeY[1];
         }
       });
+      // setup X domain
       if (minX !== undefined && maxX !== undefined) {
         self.x.domain([ minX, maxX ]);
       }
+      // setup Y domain
       if (minY !== undefined && maxY !== undefined) {
         self.y.domain([ minY, maxY ]).nice();
       }
@@ -3478,6 +3700,8 @@
       if (!groupIds || groupIds.length < 1) {
         return self.me;
       }
+      // there can be holes in the data, and each group can have different data array lengths, 
+      // so our iteration over time is a bit more complicated than simply iterating over array elements 
       while (true) {
         callbackData = {
           date: date,
@@ -3505,6 +3729,7 @@
           }
         });
         callback.call(self.me, callbackData.data, date);
+        // move to the next available date, which is the smallest in our layer context or null if no more data
         date = layerContext[groupIds.reduce(function(l, r) {
           var lDate = layerContext[l].date, rDate = layerContext[r].date;
           if (!lDate) {
@@ -3543,8 +3768,11 @@
       }
     });
     parseConfiguration();
+    // override config function
     self.parseConfiguration = parseConfiguration;
+    // override our setup funciton
     self.setup = setup;
+    // override yAxisTicks to support wiggle
     self.yAxisTicks = yAxisTicks;
     return self;
   };
@@ -3575,6 +3803,7 @@
     var parent = sn.chart.baseGroupedStackTimeChart(containerSelector, chartConfig);
     var self = sn_util_copyAll(parent);
     self.me = self;
+    // an ordinal x-axis scale, to render precise bars with
     var xBar = d3.scale.ordinal();
     var svgVertRuleGroup = parent.svgRoot.insert("g", ".annot-root").attr("class", "vertrule").attr("transform", "translate(" + parent.padding[3] + "," + parent.padding[0] + ")");
     function groupFillFn(d, i) {
@@ -3584,7 +3813,7 @@
       return parent.config.vertRuleOpacity || .05;
     }
     function computeDomainX() {
-      var x = parent.x, aggregateType = parent.aggregate(), xDomain = x.domain(), buckets, step = 1, end = xDomain[1];
+      var x = parent.x, aggregateType = parent.aggregate(), xDomain = x.domain(), buckets, step = 1, end = xDomain[1]; // d3.time.X.range has an exclusive end date, so we must add 1
       if (aggregateType === "Month") {
         end = d3.time.month.utc.offset(end, 1);
         buckets = d3.time.months.utc;
@@ -3604,15 +3833,28 @@
         end = d3.time.minute.utc.offset(end, step);
         buckets = d3.time.minutes.utc;
       } else {
+        // assume 'Hour'
         end = d3.time.hour.utc.offset(end, 1);
         buckets = d3.time.hours.utc;
       }
       buckets = buckets(xDomain[0], end, step);
       xBar.domain(buckets).rangeRoundBands(x.range(), .2);
     }
+    /**
+	 * Return the date value for a given data element.
+	 *
+	 * @param {Object} d the data element
+	 * @returns {Date} the date
+	 */
     function keyX(d) {
       return d.date;
     }
+    /**
+	 * Return the x pixel coordinate for a given bar.
+	 * 
+	 * @param {Object} d the data element
+	 * @returns {Number} x pixel coordinate
+	 */
     function valueX(d) {
       return xBar(d.date);
     }
@@ -3646,14 +3888,27 @@
       }
       return parent.x.ticks(axisXTickCount());
     }
+    /**
+	 * Get the number of pixels used for padding between bars.
+	 *
+	 * @returns {Number} the number of pixels padding between each bar
+	 */
     function xBarPadding() {
       var domain = xBar.domain();
       var barSpacing = domain.length > 1 ? xBar(domain[1]) - xBar(domain[0]) : xBar.rangeBand();
       var barPadding = barSpacing - xBar.rangeBand();
       return barPadding;
     }
+    /**
+	 * Remove data self falls outside the X domain.
+	 * 
+	 * @param {Array} array The array to inspect.
+	 * @returns {Array} Either a copy of the array with some elements removed, or the original array
+	 *                  if nothing needed to be removed.
+	 */
     function trimToXDomain(array) {
       var start = 0, len = array.length, xDomainStart = parent.x.domain()[0];
+      // remove any data earlier than first full range
       while (start < len) {
         if (array[start].date.getTime() >= xDomainStart.getTime()) {
           break;
@@ -3674,9 +3929,11 @@
     }
     function drawAxisX() {
       var ticks = axisXTicks(), transitionMs = parent.transitionMs(), fx = xAxisTickFormatter(), labels;
+      // we may have generated ticks for which we don't have bars... so filter those out
       ticks = ticks.filter(function(d) {
         return xBar(d) !== undefined;
       });
+      // Generate x-ticks, centered within bars
       labels = parent.svgTickGroupX.selectAll("text").data(ticks, Object).classed({
         major: axisXTickClassMajor
       });
@@ -3684,6 +3941,7 @@
       labels.enter().append("text").attr("dy", "-0.5em").style("opacity", 1e-6).attr("x", axisXMidBarValue).classed({
         major: axisXTickClassMajor
       }).transition().duration(transitionMs).style("opacity", 1).text(fx).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null);
       });
       labels.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
@@ -3699,16 +3957,29 @@
       labelTicks = trimToXDomain(vertRuleTicks);
       axisLines = svgVertRuleGroup.selectAll("line").data(labelTicks, keyX), axisLines.transition().duration(transitionMs).attr("x1", valueXVertRule).attr("x2", valueXVertRule);
       axisLines.enter().append("line").style("opacity", 1e-6).attr("x1", valueXVertRule).attr("x2", valueXVertRule).attr("y1", 0).attr("y2", parent.height + 10).transition().duration(transitionMs).style("opacity", vertRuleOpacity()).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null);
       });
       axisLines.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
     }
+    /**
+	 * Render a "highlight bar" over a set of bars.
+	 * 
+	 * @param {array} dataArray An array of data elements for which to render highlight bars over.
+	 *                          Pass an empty array to remove all bars.
+	 */
     function drawHoverHighlightBars(dataArray) {
       var hoverBar = parent.svgHoverRoot.selectAll("rect.highlightbar").data(dataArray);
       hoverBar.attr("x", valueX).attr("width", xBar.rangeBand());
       hoverBar.enter().append("rect").attr("x", valueX).attr("y", 0).attr("height", parent.height).attr("width", xBar.rangeBand()).classed("highlightbar clickable", true);
       hoverBar.exit().remove();
     }
+    /**
+	 * Render a "selection" rect over a set of bars.
+	 * 
+	 * @param {array} dataArray An array of data elements for which to render a selection over.
+	 *                          Pass an empty array to remove the selection.
+	 */
     function drawSelection(dataArray) {
       var firstItem = dataArray && dataArray.length > 0 ? dataArray.slice(0, 1) : [], firstItemX = dataArray && dataArray.length > 0 ? valueX(dataArray[0]) : 0, lastItemX = dataArray && dataArray.length > 0 ? valueX(dataArray[dataArray.length - 1]) : 0, width = lastItemX - firstItemX + xBar.rangeBand();
       var selectBar = parent.svgHoverRoot.selectAll("rect.selectionbar").data(firstItem);
@@ -3716,6 +3987,13 @@
       selectBar.enter().append("rect").attr("x", firstItemX).attr("y", 0).attr("height", parent.height).attr("width", width).classed("selectionbar clickable", true);
       selectBar.exit().remove();
     }
+    /**
+	 * Scale a date for the x-axis. The values returned are centered within bars.
+	 * 
+	 * @param {Date} the Date to scale
+	 * @return {Number} the scaled value
+	 * @memberOf sn.chart.baseGroupedStackTimeBarChart
+	 */
     self.scaleDate = function(date) {
       var barRange = xBar.range(), ex = xBar.rangeExtent(), x = parent.scaleDate(date);
       var result = barRange[Math.round(x / ex[1] * (barRange.length - 1))] + xBar.rangeBand() / 2;
@@ -3740,6 +4018,7 @@
       groupFillFn: {
         value: groupFillFn
       },
+      // the following functions accept a data element, e.g. { date : Date, y : Number, y0 : Number }
       keyX: {
         value: keyX
       },
@@ -3799,8 +4078,12 @@
     var parent = sn.chart.baseTimeChart(containerSelector, chartConfig), superDraw = sn.util.superMethod.call(parent, "draw");
     var self = sn_util_copyAll(parent);
     self.me = self;
+    // properties
     var sourceExcludeCallback;
-    var originalData = {}, lineIds = [], linePlotProperties = {}, lineDrawData = [];
+    var originalData = {}, // line ID -> raw data array
+    lineIds = [], // ordered array of line IDs
+    linePlotProperties = {}, // line ID -> plot property name
+    lineDrawData = [];
     var linePathGenerator = d3.svg.line().interpolate("monotone").x(function(d) {
       return Math.round(parent.x(d.date) + .5) - .5;
     }).y(function(d) {
@@ -3900,16 +4183,20 @@
         if (rawLineData) {
           rawLineData.forEach(function(d) {
             var y;
+            // set up date for X axis
             if (d.date === undefined) {
+              // automatically create Date
               d.date = sn.api.datum.datumDate(d);
             }
             if (!sourceExcludeCallback || !sourceExcludeCallback.call(this, lineId)) {
+              // adjust X axis range
               if (rangeX[0] === null || d.date < rangeX[0]) {
                 rangeX[0] = d.date;
               }
               if (rangeX[1] === null || d.date > rangeX[1]) {
                 rangeX[1] = d.date;
               }
+              // adjust Y axis range
               y = d[linePlotProperties[lineId] ? linePlotProperties[lineId] : plotPropName];
               if (y !== undefined) {
                 if (rangeY[0] === null || y < rangeY[0]) {
@@ -3924,24 +4211,29 @@
         }
         lineDrawData.push(rawLineData);
       });
+      // setup colors
       colors.domain(lineIds.length);
       if (!(colorArray && colorArray.length > 0)) {
+        // set an automatic color range based on the number of lines
         colors.range(colorbrewer.Set3[lineIds.length < 3 ? 3 : lineIds.length > 11 ? 12 : lineIds.length]);
       }
+      // setup X domain
       parent.x.domain(rangeX);
+      // setup Y domain
       parent.y.domain(rangeY).nice();
       parent.computeUnitsY();
     }
+    // return a class attribute value of the line ID, to support drawing in the line generator
     function lineClass(d, i) {
-      !d;
+      !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
       return lineIds[i];
     }
     function lineStroke(d, i) {
-      !d;
+      !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
       return colors(i);
     }
     function lineOpacity(d, i) {
-      !d;
+      !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
       var hidden = sourceExcludeCallback ? sourceExcludeCallback.call(this, lineIds[i]) : false;
       return hidden ? 1e-6 : 1;
     }
@@ -3951,14 +4243,50 @@
     function draw() {
       var transitionMs = parent.transitionMs(), lines;
       lines = parent.svgDataRoot.selectAll("path").data(lineDrawData, function(d, i) {
-        !d;
+        !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
         return lineIds[i];
       });
       lines.attr("class", lineClass).transition().duration(transitionMs).call(lineCommonProperties);
       lines.enter().append("path").attr("class", lineClass).call(lineCommonProperties);
       lines.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
       superDraw();
+      // TODo: drawAxisXRules();
     }
+    /* TODO
+	function axisXVertRule(d) {
+		return (Math.round(parent.x(d) + 0.5) - 0.5);
+	}
+
+	function drawAxisXRules(vertRuleTicks) {
+		var transitionMs = parent.transitionMs(),
+			axisLines,
+			labelTicks;
+
+		labelTicks = trimToXDomain(vertRuleTicks);
+		axisLines = svgVertRuleGroup.selectAll("line").data(labelTicks, keyX),
+
+		axisLines.transition().duration(transitionMs)
+	  		.attr("x1", valueXVertRule)
+	  		.attr("x2", valueXVertRule);
+
+		axisLines.enter().append("line")
+			.style("opacity", 1e-6)
+			.attr("x1", valueXVertRule)
+	  		.attr("x2", valueXVertRule)
+	  		.attr("y1", 0)
+	  		.attr("y2", parent.height + 10)
+		.transition().duration(transitionMs)
+			.style("opacity", vertRuleOpacity())
+			.each('end', function() {
+				// remove the opacity style
+				d3.select(this).style("opacity", null);
+			});
+
+		axisLines.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+	}
+	*/
     /**
 	 * Iterate over the time values in the chart's raw data, calling a function for each date.
 	 * The callback function will be passed an object with source IDs for keys with corresponding
@@ -3978,6 +4306,7 @@
       if (!lineIds || lineIds.length < 1) {
         return self.me;
       }
+      // merge all data into single array, then sort by time for iteration
       var dataArray = [], datumDate = sn.api.datum.datumDate, callbackData = {
         date: null,
         data: {}
@@ -3999,6 +4328,7 @@
       dataArray.forEach(function(d) {
         var date = datumDate(d);
         if (callbackData.date && date > callbackData.date) {
+          // moving to new date... invoke callback with current data
           callback.call(self.me, callbackData.data, callbackData.date);
           callbackData.date = date;
           callbackData.data = {};
@@ -4009,6 +4339,7 @@
       });
       return self.me;
     };
+    // wire up implementations
     parent.setup = setup;
     parent.draw = draw;
     return self;
@@ -4050,6 +4381,7 @@
     parent.me = that;
     var me = that;
     var svgData = parent.svgDataRoot.append("g").attr("class", "data");
+    // extending classes should re-define this property so method chaining works
     Object.defineProperty(that, "me", {
       enumerable: false,
       get: function() {
@@ -4061,12 +4393,14 @@
       }
     });
     function dataTypeOpacityFn(d, i) {
-      !d;
+      !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
       return parent.groupOpacityFn(null, i);
     }
     function draw() {
       var groupedData = [], groupIds = parent.groupIds, transitionMs = parent.transitionMs(), groups, sources;
+      // calculate our bar metrics
       parent.computeDomainX();
+      // construct a 3D array of our data, to achieve a dataType/source/datum hierarchy
       groupIds.forEach(function(groupId) {
         var groupLayer = parent.groupLayers[groupId];
         if (groupLayer === undefined) {
@@ -4077,11 +4411,15 @@
           }));
         }
       });
+      // we create groups for each data type, but don't destroy them, so we preserve DOM order
+      // and maintain opacity levels for all stack layers within each data type
       groups = svgData.selectAll("g.dataType").data(groupedData, function(d, i) {
-        !d;
+        !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
         return groupIds[i];
       });
       groups.enter().append("g").attr("class", "dataType").style("opacity", dataTypeOpacityFn);
+      // now add a group for each source within the data type, where we set the color so all
+      // bars within the group inherit the same value
       sources = groups.selectAll("g.source").data(Object, function(d) {
         return d[0].sourceId;
       }).style("fill", parent.groupFillFn);
@@ -4091,6 +4429,7 @@
       parent.drawAxisY();
       parent.drawAxisX();
     }
+    // define our drawing function
     parent.draw = draw;
     return that;
   };
@@ -4127,6 +4466,7 @@
  */
   sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
     "use strict";
+    // override defaults of parent
     if (!(chartConfig && chartConfig.padding)) {
       chartConfig.value("padding", [ 20, 0, 30, 30 ]);
     }
@@ -4141,11 +4481,13 @@
       return me;
     }();
     parent.me = self;
+    // Boolean, true for northern hemisphere seasons, false for southern.
     var northernHemisphere = undefined;
+    // object keys define group IDs to treat as "negative" or consumption values, below the X axis
     var negativeGroupMap = {
       Consumption: true
     };
-    var svgAggBandGroup = parent.svgDataRoot.append("g").attr("class", "agg-band").attr("transform", "translate(0," + (parent.height + parent.padding[2] - 25) + ".5)");
+    var svgAggBandGroup = parent.svgDataRoot.append("g").attr("class", "agg-band").attr("transform", "translate(0," + (parent.height + parent.padding[2] - 25) + ".5)"); // .5 for odd-width stroke
     var svgAggBandLabelGroup = parent.svgDataRoot.append("g").attr("class", "agg-band-ticks").attr("transform", "translate(0," + (parent.height + parent.padding[2] - 21) + ")");
     var svgData = parent.svgDataRoot.append("g").attr("class", "data");
     var svgSumLineGroup = parent.svgDataRoot.append("g").attr("class", "agg-sum");
@@ -4183,7 +4525,12 @@
       }
       return d3.format(fmt);
     }
+    /**
+	 * A rollup function for d3.dest(), that aggregates the plot property value and
+	 * returns objects in the form <code>{ date : Date(..), y : Number, plus : Number, minus : Number }</code>.
+	 */
     function nestRollupAggregateSum(array) {
+      // Note: we don't use d3.sum here because we want to end up with a null value for "holes"
       var sum = null, plus = null, minus = null, d, v, i, len = array.length, groupId, scale, negate = false;
       for (i = 0; i < len; i += 1) {
         d = array[i];
@@ -4211,6 +4558,8 @@
     }
     function setupDrawData() {
       var groupedData = [], groupIds = parent.groupIds, maxPositiveY = 0, maxNegativeY = 0, aggregateType = parent.aggregate(), sumLineData, timeAggregateData;
+      // construct a 3D array of our data, to achieve a dataType/source/datum hierarchy;
+      // also construct 2D array for sum line
       groupIds.forEach(function(groupId) {
         var groupLayer = parent.groupLayers[groupId];
         if (groupLayer === undefined) {
@@ -4244,14 +4593,17 @@
       timeAggregateData = d3.nest().key(function(d) {
         var date;
         if (aggregateType === "Day") {
+          // rollup to month
           date = d3.time.month.utc.floor(d.date);
         } else if (aggregateType === "Month") {
+          // rollup to MIDDLE of seasonal quarters, e.g. Jan/Apr/Jul/Oct
           date = d3.time.month.utc.offset(d.date, -((d.date.getUTCMonth() + 1) % 3));
         } else {
           date = d3.time.day.utc.floor(d.date);
         }
         return date.getTime();
       }).sortKeys(d3.ascending).rollup(nestRollupAggregateSum).entries(allData).map(function(e) {
+        // map date to aggregate value
         e.values.date = new Date(Number(e.key));
         return e.values;
       });
@@ -4266,15 +4618,17 @@
     }
     function draw() {
       var groupIds = parent.groupIds, transitionMs = parent.transitionMs(), groups, sources, centerYLoc, yDomain = parent.y.domain(), drawData;
+      // calculate our bar metrics
       parent.computeDomainX();
       drawData = setupDrawData();
       chartDrawData = drawData;
+      // adjust Y domain to include "negative" range
       yDomain[0] = -drawData.maxNegativeY;
       yDomain[1] = drawData.maxPositiveY;
       parent.y.domain(yDomain).nice();
       centerYLoc = parent.y(0);
       function dataTypeGroupTransformFn(d, i) {
-        !d;
+        !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
         var yShift = 0;
         if (negativeGroupMap[groupIds[i]] === true) {
           yShift = -(centerYLoc * 2);
@@ -4283,12 +4637,16 @@
           return null;
         }
       }
+      // we create groups for each data type, but don't destroy them, so we preserve DOM order
+      // and maintain opacity levels for all stack layers within each data type
       groups = svgData.selectAll("g.dataType").data(drawData.groupedData, function(d, i) {
-        !d;
+        !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
         return groupIds[i];
       });
       groups.transition().duration(transitionMs).attr("transform", dataTypeGroupTransformFn);
       groups.enter().append("g").attr("class", "dataType").attr("transform", dataTypeGroupTransformFn);
+      // now add a group for each source within the data type, where we set the color so all
+      // bars within the group inherit the same value
       sources = groups.selectAll("g.source").data(Object, function(d) {
         return d[0].sourceId;
       }).style("fill", parent.groupFillFn);
@@ -4331,13 +4689,16 @@
         s.attr("x1", function(d) {
           var date = d.date;
           if (date.getTime() < xDomain[0].getTime()) {
+            // first band starts before first date, shift to first date
             date = xDomain[0];
           }
           return xBar(date) - barPadding;
         }).attr("x2", function(d, i) {
+          // for all bands but last, set to start of next band
           if (i + 1 < bandTicks.length) {
             return xBar(bandTicks[i + 1].date) - barPadding;
           }
+          // for last band, set to end of last bar
           if (bandTicks.length > 0) {
             return xBar(xDomain[1]) + barWidth + barPadding;
           }
@@ -4346,11 +4707,19 @@
       };
       aggBands.transition().duration(transitionMs).call(bandPosition);
       aggBands.enter().append("line").style("opacity", 1e-6).call(bandPosition).transition().duration(transitionMs).style("opacity", 1).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null);
       });
       aggBands.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
+      // now draw the labels inside the bands
       function labelTextX(d) {
         var x = parent.valueXMidBar(d);
+        /* could shift to center of band; but for now keeping vertically aligned with top aggregate label
+			if ( d.date.getTime() < xDomain[1].getTime() ) {
+				// shift the label to the next bar (this assumes 3 bars per group)
+				//x += barPadding * 2 + barWidth;
+			}
+			*/
         return x;
       }
       function textFn(d) {
@@ -4360,12 +4729,14 @@
       var aggBandLabels = svgAggBandLabelGroup.selectAll("text").data(parent.trimToXDomain(bandTicks), parent.keyX);
       aggBandLabels.transition().duration(transitionMs).attr("x", labelTextX).text(textFn);
       aggBandLabels.enter().append("text").style("opacity", 1e-6).attr("x", labelTextX).transition().duration(transitionMs).style("opacity", 1).text(textFn).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null);
       });
       aggBandLabels.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
     }
     function drawTimeAggregates(timeAggregateData) {
       var transitionMs = parent.transitionMs(), aggLabels, labelTicks, labelFormatter = timeAggregateLabelFormatter();
+      // remove any ticks earlier than first full range
       labelTicks = parent.trimToXDomain(timeAggregateData);
       function textFn(d) {
         return labelFormatter(d.plus / parent.yScale());
@@ -4373,6 +4744,7 @@
       aggLabels = svgAggGroup.selectAll("text").data(labelTicks, parent.keyX);
       aggLabels.transition().duration(transitionMs).attr("x", parent.valueXMidBar).text(textFn).style("fill", labelSeasonColors);
       aggLabels.enter().append("text").attr("x", parent.valueXMidBar).style("opacity", 1e-6).style("fill", labelSeasonColors).transition().duration(transitionMs).text(textFn).style("opacity", 1).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null);
       });
       aggLabels.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
@@ -4400,6 +4772,8 @@
           }
           groupHoverData.index = i;
           groupArray.forEach(function(dataArray) {
+            // only count the data if the date is the same as our bar date... the bisectDate() function retunrs
+            // the *closest* date, but if there are holes in the data we might not have the *exact* date
             if (dataArray[i].date.getTime() === barDate.getTime()) {
               dataValue = dataArray[i][parent.plotPropertyName] * scale;
               if (callbackData.dateUTC === undefined && dataArray[i].created) {
@@ -4407,7 +4781,7 @@
                 callbackData.utcDate = sn.format.parseTimestamp(callbackData.dateUTC);
               }
             } else {
-              dataValue = null;
+              dataValue = null; // null to flag as missing
             }
             totalValue += dataValue;
             groupHoverData.data.push(dataValue);
@@ -4431,6 +4805,7 @@
       });
       callbackData.index = barIndex;
       if (callbackData.utcDate === undefined) {
+        // find the UTC date based on the offset of some bar's known UTC date value
         chartDrawData.groupedData.some(function(groupArray) {
           return groupArray.some(function(dataArray) {
             var d = dataArray.length > 0 ? dataArray[0] : undefined, i = -1, dateUTC, time = d3.time.month, step = 1, agg = parent.aggregate();
@@ -4457,7 +4832,7 @@
                 } else if (agg === "FifteenMinute") {
                   time = d3.time.minute;
                   step = 15;
-                }
+                } // else we've defaulted to Month already
                 callbackData.utcDate = time.offset(dateUTC, step * (barIndex - i));
                 return true;
               }
@@ -4494,6 +4869,7 @@
       }
       parent.drawHoverHighlightBars(callbackData && callbackData.dateUTC ? [ callbackData ] : []);
       selectedBarData = callbackData;
+      // draw selection as we move, if a selection started
       if (selectionBarData.length > 0) {
         if (callbackData.date > selectionBarData[0].date) {
           parent.drawSelection(selectionBarData.concat(callbackData));
@@ -4509,6 +4885,7 @@
         return;
       }
       var args = [];
+      // `this` may not be defined here, if reset is called
       if (this) {
         args.push(this);
         args.push(sn.tapCoordinates(this));
@@ -4528,6 +4905,7 @@
         callbackData = calculateHoverData(point);
       }
       if (selectionBarData.length > 0) {
+        // clear the selection after selection
         selectionBarData.length = 0;
         parent.drawSelection(selectionBarData);
       }
@@ -4548,18 +4926,22 @@
         return;
       }
       if ((sn.hasTouchSupport || d3.event.shiftKey) && selectionBarData.length > 0) {
+        // preserve ascending order
         if (callbackData.date > selectionBarData[0].date) {
           selectionBarData.push(callbackData);
         } else {
           selectionBarData.splice(0, 0, callbackData);
         }
       } else if (selectionBarData.length > 0) {
+        // clear the selection
         selectionBarData.length = 0;
       } else {
+        // first bar, add to array
         selectionBarData.push(callbackData);
       }
       selectionCallbackData = selectionBarData;
       if (selectionBarData.length > 1) {
+        // clear the selection after selection
         selectionCallbackData = selectionBarData.slice(0, selectionBarData.length);
         selectionBarData.length = 0;
       }
@@ -4567,10 +4949,18 @@
       d3.event.preventDefault();
       rangeCallback.call(parent.me, this, point, selectionCallbackData);
     }
+    /**
+	 * Toggle showing the sum line, or get the current setting.
+	 *
+	 * @param {boolean} [value] <em>true</em> to show the sum line, <em>false</em> to hide it
+	 * @returns when used as a getter, the current setting
+	 * @memberOf sn.chart.energyIOBarChart
+	 */
     self.showSumLine = function(value) {
       if (!arguments.length) return !svgSumLineGroup.classed("off");
       var transitionMs = parent.transitionMs();
       svgSumLineGroup.style("opacity", value ? 1e-6 : 1).classed("off", false).transition().duration(transitionMs).style("opacity", value ? 1 : 1e-6).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null).classed("off", !value);
       });
       return parent.me;
@@ -4621,6 +5011,7 @@
       });
       return parent.me;
     };
+    // define our custom drawing functions
     parent.draw = draw;
     parent.handleHoverEnter = handleHoverEnter;
     parent.handleHoverMove = handleHoverMove;
@@ -4689,22 +5080,24 @@
     var me = self;
     var sources = [];
     var config = chartConfig || new sn.Configuration();
+    // default to container's width, if we can
     var containerWidth = sn.ui.pixelWidth(containerSelector);
     var p = config.padding || [ 24, 24, 24, 24 ], w = (config.width || containerWidth || 300) - p[1] - p[3], h = (config.height || 300) - p[0] - p[2], r = d3.min([ w, h ]) / 2;
     var transitionMs = undefined;
     var plotProperty = "wattHours";
     var chartData = undefined, chartLabels = undefined;
     var svgRoot, svgHoverRoot;
+    // a numeric scale factor, by groupId
     var scaleFactors = {};
-    var colorCallback = undefined;
-    var sourceExcludeCallback = undefined;
-    var displayFactorCallback = undefined;
-    var layerKeyCallback = undefined;
+    var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
+    var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
+    var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
+    var layerKeyCallback = undefined; // function accepts datum and should return string key
     var layerKeySort = sortSliceKeys;
     var hoverEnterCallback = undefined, hoverMoveCallback = undefined, hoverLeaveCallback = undefined, clickCallback = undefined;
     var percentFormatter = d3.format(".0%");
     var originalData = {};
-    var pieData = [];
+    var pieData = []; // derived data from originalData
     var groupIds = [];
     var pieSlices = undefined;
     var totalValue = 0;
@@ -4785,6 +5178,7 @@
       arc.innerRadius(innerRadius).outerRadius(r);
     }
     parseConfiguration();
+    // if the passed in container *is* a svg element already, just use that directly
     svgRoot = d3.select(containerSelector);
     if (svgRoot.node() && svgRoot.node().tagName.toLowerCase() !== "svg") {
       svgRoot = svgRoot.select("svg");
@@ -4796,6 +5190,7 @@
     }
     chartData = svgRoot.append("g").attr("class", "data").attr("transform", "translate(" + (w + p[1] + p[3]) / 2 + "," + (h + p[0] + p[2]) / 2 + ")");
     chartLabels = svgRoot.append("g").attr("class", "label").attr("transform", "translate(" + (w + p[1] + p[3]) / 2 + "," + (h + p[0] + p[2]) / 2 + ")");
+    // setup display units in kW if domain range > 1000
     var displayFactor = 1;
     var displayFormatter = d3.format(",d");
     function sliceValue(d) {
@@ -4849,13 +5244,14 @@
           }
           return result;
         }).entries(originalData[groupId]);
+        // remove excluded sources...
         if (sourceExcludeCallback) {
           rollup = rollup.filter(function(e) {
             return !sourceExcludeCallback.call(self, groupId, e.key);
           });
         }
         combinedRollup = combinedRollup.concat(rollup.map(function(e) {
-          e.values.key = e.key;
+          e.values.key = e.key; // add key to values, for sorting
           return e.values;
         }));
       });
@@ -4892,6 +5288,7 @@
       return d.data.key;
     }
     function draw() {
+      // draw data areas
       var pie = chartData.selectAll("path").data(pieSlices, pieSliceKey);
       pie.transition().duration(transitionMs).attr("d", arc).style("fill", pieSliceColorFn).attrTween("d", arcTween);
       pie.enter().append("path").attr("class", function(d) {
@@ -4920,9 +5317,11 @@
       var a = halfAngleForLabel(d);
       return "translate(" + Math.cos(a) * r + "," + Math.sin(a) * r + ")";
     }
+    // format the data's actual value
     function outerText(d) {
       return displayFormatter(d.value / displayFactor);
     }
+    // format the data's value as a percentage of the overall pie value
     function innerText(d) {
       return percentFormatter(d.value / totalValue);
     }
@@ -4953,6 +5352,33 @@
       return (isNaN(m) ? 5 : m) / 100 * totalValue;
     }
     function redrawLabels() {
+      /* TODO: the idea for drawing lines would be if the pie slice is too small to
+		 * show a value inside. We'd draw a line out from the slice, using the same
+		 * color as the slice.
+
+		// draw data labels
+		var lines = chartLabels.selectAll("line").data(pieSlices, pieSliceKey);
+
+		lines.transition().duration(transitionMs)
+			.attr('transform', halfWayRotation);
+
+		// we'll draw vertical lines, and then rotate them to match the half way angle
+		// between the start/end angles defined on our data elements
+		lines.enter().append("line")
+			.attr("class", "tick")
+			.attr("y1", -Math.floor(r - 10))
+			.attr("y2", -Math.floor(r + 10))
+			.style("opacity", 1e-6)
+			.attr('transform', halfWayRotation)
+		.transition().duration(transitionMs)
+			.style("opacity", 1)
+			.each("end", clearOpacity);
+
+		lines.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+		*/
+      // show outer labels of actual values
       var outerMinValue = outerLabelMinValue();
       var outerLabelData = config.enabled("hideValues") ? [] : pieSlices.filter(function(e) {
         return e.value > outerMinValue;
@@ -4969,6 +5395,8 @@
         this._data_start = d;
       }).transition().duration(transitionMs).style("opacity", 1).each("end", clearOpacity);
       outerLabels.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
+      // TODO: remove lables if pie slice too small to hold text for it
+      // inner labels, showing percentage
       var innerMinValue = innerLabelMinValue();
       var innerLabelData = config.enabled("hidePercentages") ? [] : pieSlices.filter(function(e) {
         return e.value > innerMinValue;
@@ -4988,12 +5416,33 @@
       innerLabels.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
     }
     self.sources = sources;
+    /**
+	 * Get the scaling factor the labels are using. By default this will return {@code 1}.
+	 * After calling the {@link #load()} method, however, the chart may decide to scale
+	 * the data for clarity. You can call this method to find out the scaling factor the
+	 * chart ended up using.
+	 *
+	 * @return the y-axis scale factor
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.scale = function() {
       return displayFactorCallback ? displayFactorCallback() : displayFactor;
     };
+    /**
+	 * Get the sum total of all slices in the pie chart.
+	 *
+	 * @return the sum total energy value
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.totalValue = function() {
       return totalValue;
     };
+    /**
+	 * Clear out all data associated with this chart. Does not redraw.
+	 *
+	 * @return this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.reset = function() {
       originalData = {};
       groupIds = [];
@@ -5001,6 +5450,16 @@
       pieSlices = undefined;
       return me;
     };
+    /**
+	 * Add data for a single group in the chart. The data is appended if data has
+	 * already been loaded for the given groupId. This does not redraw the chart.
+	 * Once all groups have been loaded, call {@link #regenerate()} to redraw.
+	 *
+	 * @param {Array} rawData - the raw chart data to load
+	 * @param {String} groupId - a unique ID to associate with the data
+	 * @return this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.load = function(rawData, groupId) {
       if (originalData[groupId] === undefined) {
         groupIds.push(groupId);
@@ -5010,8 +5469,16 @@
       }
       return me;
     };
+    /**
+	 * Regenerate the chart, using the current data. This can be called after disabling a
+	 * source, for example.
+	 *
+	 * @return this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.regenerate = function() {
       if (originalData === undefined) {
+        // did you call load() first?
         return self;
       }
       parseConfiguration();
@@ -5019,16 +5486,45 @@
       draw();
       return me;
     };
+    /**
+	 * Get or set the animation transition time, in milliseconds.
+	 *
+	 * @param {number} [value] the number of milliseconds to use
+	 * @return when used as a getter, the millisecond value, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.transitionMs = function(value) {
       if (!arguments.length) return transitionMs;
-      transitionMs = +value;
+      transitionMs = +value; // the + used to make sure we have a Number
       return me;
     };
+    /**
+	 * Get or set the plot property names to display data for.
+	 *
+	 * @param {string} [value] The data property to plot in the chart.
+	 * @return When used as a getter, the current plot property name value, otherwise this object,
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.plotProperty = function(value) {
       if (!arguments.length) return plotProperty;
       plotProperty = value;
       return me;
     };
+    /**
+	 * Get or set the scale factor for specific group IDs. If called without any arguments,
+	 * all configured scale factors will be returned as an object, with group IDs as property
+	 * names with corresponding scale factor values. If called with a single Object argument
+	 * then set all scale factors using group IDs as object property names with corresponding
+	 * number values for the scale factor.
+	 *
+	 * @param {String} groupId - The group ID of the scale factor to set.
+	 * @param {Number} value - The scale factor to set.
+	 * @returns If called without any arguments, all configured scale factors as an object.
+	 *          If called with a single String <code>groupId</code> argument, the scale factor for the given group ID,
+	 *          or <code>1</code> if not defined.
+	 *          If called with a single Object <code>groupId</code> argument, set
+	 *          Otherwise, this object.
+	 */
     self.scaleFactor = function(groupId, value) {
       var v;
       if (!arguments.length) return scaleFactors;
@@ -5037,12 +5533,20 @@
           v = scaleFactors[groupId];
           return v === undefined ? 1 : v;
         }
+        // for a single Object argument, reset all scaleFactors
         scaleFactors = groupId;
       } else if (arguments.length == 2) {
         scaleFactors[groupId] = value;
       }
       return me;
     };
+    /**
+	 * Get or set the color callback function. The callback will be passed a datum.
+	 *
+	 * @param {function} [value] the color callback
+	 * @return when used as a getter, the current color callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.colorCallback = function(value) {
       if (!arguments.length) return colorCallback;
       if (typeof value === "function") {
@@ -5052,6 +5556,15 @@
       }
       return me;
     };
+    /**
+	 * Get or set the display factor callback function. The callback will be passed the maximum
+	 * pie slice value as an argument. It should return a number representing the scale factor to use
+	 * in labels.
+	 *
+	 * @param {function} [value] the display factor exclude callback
+	 * @return when used as a getter, the current display factor callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.displayFactorCallback = function(value) {
       if (!arguments.length) return displayFactorCallback;
       if (typeof value === "function") {
@@ -5061,6 +5574,15 @@
       }
       return me;
     };
+    /**
+	 * Get or set the source exclude callback function. The callback will be passed the group ID
+	 * and a source ID as arguments. It should true <em>true</em> if the data set for the given
+	 * group ID and source ID should be excluded from the chart.
+	 *
+	 * @param {function} [value] the source exclude callback
+	 * @return when used as a getter, the current source exclude callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.sourceExcludeCallback = function(value) {
       if (!arguments.length) return sourceExcludeCallback;
       if (typeof value === "function") {
@@ -5070,6 +5592,14 @@
       }
       return me;
     };
+    /**
+	 * Get or set the layer key callback function. The callback will be passed a group ID and datum and should
+	 * return the rollup key to use.
+	 *
+	 * @param {function} [value] the layer key callback
+	 * @return when used as a getter, the current layer key callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.layerKeyCallback = function(value) {
       if (!arguments.length) return layerKeyCallback;
       if (typeof value === "function") {
@@ -5077,6 +5607,14 @@
       }
       return me;
     };
+    /**
+	 * Get or set the layer key sort function. The function will be passed two datum and should
+	 * return -1, 0, or 1 if they are in descending, equal, or ascending order.
+	 *
+	 * @param {function} [value] the layer sort callback
+	 * @return when used as a getter, the current layer key sort function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.layerKeySort = function(value) {
       if (!arguments.length) return layerKeySort;
       if (typeof value === "function") {
@@ -5084,6 +5622,14 @@
       }
       return me;
     };
+    /**
+	 * Get or set a mouseover callback function, which is called in response to mouse entering
+	 * the data area of the chart.
+	 *
+	 * @param {function} [value] the mouse enter callback
+	 * @return when used as a getter, the current mouse enter callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.hoverEnterCallback = function(value) {
       if (!arguments.length) return hoverEnterCallback;
       getOrCreateHoverRoot();
@@ -5094,6 +5640,14 @@
       }
       return me;
     };
+    /**
+	 * Get or set a mousemove callback function, which is called in response to mouse movement
+	 * over the data area of the chart.
+	 *
+	 * @param {function} [value] the hover callback
+	 * @return when used as a getter, the current hover callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.hoverMoveCallback = function(value) {
       if (!arguments.length) return hoverMoveCallback;
       getOrCreateHoverRoot();
@@ -5105,6 +5659,14 @@
       }
       return me;
     };
+    /**
+	 * Get or set a mouseout callback function, which is called in response to mouse leaving
+	 * the data area of the chart.
+	 *
+	 * @param {function} [value] the mouse enter callback
+	 * @return when used as a getter, the current mouse leave callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.hoverLeaveCallback = function(value) {
       if (!arguments.length) return hoverLeaveCallback;
       getOrCreateHoverRoot();
@@ -5115,6 +5677,14 @@
       }
       return me;
     };
+    /**
+	 * Get or set a mouseout click function, which is called in response to mouse click or touch start
+	 * events on the data area of the chart.
+	 *
+	 * @param {function} [value] the click callback
+	 * @return when used as a getter, the current click callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
     self.clickCallback = function(value) {
       if (!arguments.length) return clickCallback;
       if (typeof value === "function") {
@@ -5162,6 +5732,7 @@
       if (!groupIds || groupIds.length < 1) {
         return me;
       }
+      // merge all data into single array, then sort by time for iteration
       var dataArray = [], datumDate = sn.api.datum.datumDate, callbackData = {
         date: null,
         data: {}
@@ -5183,6 +5754,7 @@
       dataArray.forEach(function(d) {
         var date = datumDate(d);
         if (callbackData.date && date > callbackData.date) {
+          // moving to new date... invoke callback with current data
           callback.call(me, callbackData.data, callbackData.date);
           callbackData.date = date;
           callbackData.data = {};
@@ -5245,6 +5817,7 @@
       range = config.maxAngle - config.minAngle;
       r = config.size / 2;
       pointerHeadLength = Math.round(r * config.pointerHeadLengthPercent);
+      // a linear scale that maps domain values to a percent from 0..1
       scale = d3.scale.linear().range([ 0, 1 ]).domain([ config.minValue, config.maxValue ]);
       ticks = scale.ticks(config.majorTicks);
       tickData = d3.range(config.majorTicks).map(function() {
@@ -5281,7 +5854,7 @@
       var lineData = [ [ config.pointerWidth / 2, 0 ], [ 0, -pointerHeadLength ], [ -(config.pointerWidth / 2), 0 ], [ 0, config.pointerTailLength ], [ config.pointerWidth / 2, 0 ] ];
       var pointerLine = d3.svg.line().interpolate("monotone");
       var pg = svg.append("g").data([ lineData ]).attr("class", "pointer").attr("transform", centerTx);
-      pointer = pg.append("path").attr("d", pointerLine).attr("transform", "rotate(" + config.minAngle + ")");
+      pointer = pg.append("path").attr("d", pointerLine /*function(d) { return pointerLine(d) +'Z';}*/).attr("transform", "rotate(" + config.minAngle + ")");
       update(newValue === undefined ? 0 : newValue);
     }
     that.render = render;
@@ -5360,9 +5933,11 @@
             if (self.dataCallback()) {
               self.dataCallback().call(parent.me, groupId, d);
             } else if (d.date === undefined) {
+              // automatically create Date
               d.date = sn.api.datum.datumDate(d);
             }
           }
+          // remove excluded sources...
           if (self.sourceExcludeCallback() && self.sourceExcludeCallback().call(parent.me, groupId, d.sourceId)) {
             continue;
           }
@@ -5370,11 +5945,13 @@
         }
       });
       layerData = d3.nest().key(function(d) {
+        // note we assume groupId has no pipe character in it
         return d[parent.internalPropName].groupId + "|" + d.sourceId;
       }).sortKeys(d3.ascending).entries(allData);
       if (layerData.length < 1) {
         return;
       }
+      // fill in "holes" for each stack layer, if more than one layer. we assume data already sorted by date
       dummy = {};
       dummy[plotPropName] = null;
       sn.api.datum.nestedStackDataNormalizeByDate(layerData, dummy, function(dummy, key) {
@@ -5384,8 +5961,10 @@
         };
         dummy.sourceId = key.slice(idx + 1);
       });
+      // now look to fill in "zero" values to make interpolation look better
       parent.insertNormalizedDurationIntoLayerData(layerData);
       if (parent.me.layerPostProcessCallback()) {
+        // we have to perform this call once per group, so we split this into multiple calls
         layerData = function() {
           var newLayerData = [];
           parent.groupIds.forEach(function(groupId) {
@@ -5405,9 +5984,11 @@
       rangeY = [ 0, d3.max(layers[layers.length - 1].values, function(d) {
         return d.y0 + d.y;
       }) ];
+      // setup X domain
       if (rangeX !== undefined) {
         parent.x.domain(rangeX);
       }
+      // setup Y domain
       if (rangeY !== undefined) {
         parent.y.domain(rangeY).nice();
       }
@@ -5427,10 +6008,32 @@
       area.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
       superDraw();
     }
+    // override our setup funciton
     parent.setup = setup;
+    // define our drawing function
     parent.draw = draw;
     return self;
   };
+  /**
+ * @typedef sn.chart.powerAreaOverlapChartParameters
+ * @type {sn.Configuration}
+ * @property {number} [width=812] - desired width, in pixels, of the chart
+ * @property {number} [height=300] - desired height, in pixels, of the chart
+ * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
+ * @property {number} [transitionMs=600] - transition time
+ * @property {number} [opacityReduction=0.1] - a percent opacity reduction to apply to groups on top of other groups
+ * @property {object} [plotProperties] - the property to plot for specific aggregation levels; if unspecified 
+ *                                       the {@code watts} property is used
+ */
+  /**
+ * A power stacked area chart that overlaps two or more data sets.
+ * 
+ * @class
+ * @extends sn.chart.baseGroupedStackChart
+ * @param {string} containerSelector - the selector for the element to insert the chart into
+ * @param {sn.chart.powerAreaOverlapChartParameters} [chartConfig] - the chart parameters
+ * @returns {sn.chart.powerAreaOverlapChart}
+ */
   sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
     var parent = sn.chart.baseGroupedStackTimeChart(containerSelector, chartConfig), superDraw = sn.util.superMethod.call(parent, "draw");
     var that = function() {
@@ -5449,11 +6052,12 @@
       return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
     }
     function areaOpacityFn(d, i, j) {
-      !d;
-      !i;
+      !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
+      !i; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
       return parent.groupOpacityFn(null, j);
     }
     function draw() {
+      // group the data into 2D array, so we can use d3 nested selections to map the data
       var groupedData = [];
       var groupedDataIds = [];
       var groupIds = parent.groupIds;
@@ -5470,7 +6074,7 @@
         groupedData.push(groupData);
       });
       var groups = parent.svgDataRoot.selectAll("g.data").data(groupedData, function(d, i) {
-        !d;
+        !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
         return groupedDataIds[i];
       });
       groups.enter().append("g").attr("class", "data");
@@ -5483,8 +6087,9 @@
       area.exit().transition().duration(transitionMs).style("opacity", 1e-6).remove();
       superDraw();
     }
+    // define our drawing function
     parent.draw = draw;
-    parent.normalizeDataTimeGaps(true);
+    parent.normalizeDataTimeGaps(true); // turn this on be default
     return that;
   };
   /**
@@ -5529,13 +6134,19 @@
     }).y1(function(d) {
       return parent.y(d.y0 + d.y);
     });
+    // object keys define group IDs to treat as "negative" or consumption values, below the X axis
     var negativeGroupMap = {
       Consumption: true
     };
     function areaFillFn(d, i) {
       return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
     }
+    /**
+	 * A rollup function for d3.dest(), that aggregates the plot property value and 
+	 * returns objects in the form <code>{ date : Date(..), y : Number, plus : Number, minus : Number }</code>.
+	 */
     function nestRollupAggregateSum(array) {
+      // Note: we don't use d3.sum here because we want to end up with a null value for "holes"
       var sum = null, plus = null, minus = null, d, v, i, len = array.length, groupId, scale, negate = false;
       for (i = 0; i < len; i += 1) {
         d = array[i];
@@ -5576,15 +6187,17 @@
         interval = d3.time.minute.utc;
         step = 5;
       } else {
+        // assume FifteenMinute
         interval = d3.time.minute.utc;
         step = 15;
       }
       buckets = interval.range(xDomain[0], interval.offset(xDomain[1], step), step);
-      result.domain(buckets);
+      result.domain(buckets); //.rangeRoundBands(x.range(), 0.2);
       return result;
     }
     function setupDrawData() {
       var groupedData = [], groupIds = parent.groupIds, maxPositiveY = 0, maxNegativeY = 0, xDates = ordinalXScale(), sumLineData;
+      // construct a 3D array of our data, to achieve a dataType/source/datum hierarchy;
       groupIds.forEach(function(groupId) {
         var groupLayer = parent.groupLayers[groupId];
         if (groupLayer === undefined) {
@@ -5605,6 +6218,7 @@
           }));
         }
       });
+      // we use xDates to normalize the data for all dates in chart, so we can show holes in the data
       var allData = d3.merge(d3.merge(groupedData)).concat(xDates.domain().map(function(e) {
         return {
           date: e
@@ -5625,12 +6239,13 @@
     function draw() {
       var groupIds = parent.groupIds, transitionMs = parent.transitionMs(), groups, sources, centerYLoc, yDomain = parent.y.domain(), drawData;
       drawData = setupDrawData();
+      // adjust Y domain to include "negative" range
       yDomain[0] = -drawData.maxNegativeY;
       yDomain[1] = drawData.maxPositiveY;
       parent.y.domain(yDomain).nice();
       centerYLoc = parent.y(0);
       function dataTypeGroupTransformFn(d, i) {
-        !d;
+        !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
         var yShift = 0;
         if (negativeGroupMap[groupIds[i]] === true) {
           yShift = -(centerYLoc * 2);
@@ -5639,8 +6254,10 @@
           return null;
         }
       }
+      // we create groups for each data type, but don't destroy them, so we preserve DOM order
+      // and maintain opacity levels for all stack layers within each data type
       groups = parent.svgDataRoot.selectAll("g.dataType").data(drawData.groupedData, function(d, i) {
-        !d;
+        !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
         return groupIds[i];
       });
       groups.transition().duration(transitionMs).attr("transform", dataTypeGroupTransformFn);
@@ -5684,6 +6301,7 @@
       if (!arguments.length) return !svgSumLineGroup.classed("off");
       var transitionMs = parent.transitionMs();
       svgSumLineGroup.style("opacity", value ? 1e-6 : 1).classed("off", false).transition().duration(transitionMs).style("opacity", value ? 1 : 1e-6).each("end", function() {
+        // remove the opacity style
         d3.select(this).style("opacity", null).classed("off", !value);
       });
       return parent.me;
@@ -5715,8 +6333,9 @@
       });
       return parent.me;
     };
+    // define our drawing function
     parent.draw = draw;
-    parent.normalizeDataTimeGaps(true);
+    parent.normalizeDataTimeGaps(true); // turn this on be default
     return self;
   };
   /**
@@ -5762,7 +6381,7 @@
       return new Date(Date.UTC(2001, 0, 1 + offset));
     };
     parent.timeKeyForDate = function(date) {
-      return (date.getUTCDay() + 6) % 7;
+      return (date.getUTCDay() + 6) % 7; // group into DOW, with Monday as 0
     };
     parent.timeKeyInterval = function() {
       return d3.time.day.utc;
@@ -5807,7 +6426,7 @@
     parent.timeKeyLabels([ "Midnight", "1am", "2am", "3am", "4am", "5am", "6am", "7am", "8am", "9am", "10am", "11am", "Noon", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "8pm", "9pm", "10pm", "11pm" ]);
     parent.xAxisTicks = function() {
       return parent.x.domain().filter(function(d, i) {
-        !d;
+        !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
         return i % 2 === 0;
       });
     };
@@ -5843,10 +6462,14 @@
         color: colorRange(i)
       };
     });
+    // also provide a mapping of sources to corresponding colors
     var i, len, sourceName;
     for (i = 0, len = colorData.length; i < len; i += 1) {
+      // a source value might actually be a number string, which JavaScript will treat 
+      // as an array index so only set non-numbers here
       sourceName = colorData[i].source;
       if (sourceName === "") {
+        // default to Main if source not provided
         sourceName = "Main";
       }
       if (isNaN(Number(sourceName))) {
@@ -5961,7 +6584,7 @@
     var displayDataTypeFn;
     var displaySourceFn;
     var displayColorFn;
-    var displayToSourceObjects = {};
+    var displayToSourceObjects = {}; // map of 'dType / source' -> { dataType : dType, source : source }
     if (typeof p.displayDataType === "function") {
       displayDataTypeFn = p.displayDataType;
     } else {
@@ -5973,7 +6596,7 @@
       displaySourceFn = p.displaySource;
     } else {
       displaySourceFn = function(dataType, sourceId) {
-        !dataType;
+        !dataType; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
         return sourceId;
       };
     }
@@ -5994,6 +6617,7 @@
         }
         chartSourceMap[dtype][el] = mappedSource;
         if (el === "Main") {
+          // also add '' for compatibility
           chartSourceMap[dtype][""] = mappedSource;
         }
         typeSourceList.push(mappedSource);
@@ -6031,6 +6655,7 @@
         sourceColors = sourceColors.concat(colorSlice);
       }
     }
+    // create a reverse display mapping
     var reverseDisplaySourceMap = {};
     var sourceId, displayMap;
     for (dataType in chartSourceMap) {
@@ -6069,6 +6694,7 @@
     var pair;
     var i, len, k, v;
     if (search !== undefined && search.length > 0) {
+      // remove any leading ? character
       if (search.match(/^\?/)) {
         search = search.substring(1);
       }
@@ -6080,7 +6706,7 @@
           v = decodeURIComponent(pair[1]);
           if (params[k]) {
             if (!Array.isArray(params[k])) {
-              params[k] = [ params[k] ];
+              params[k] = [ params[k] ]; // turn into array;
             }
             params[k].push(v);
           } else {
@@ -6139,6 +6765,7 @@
       return false;
     }
     if ("createTouch" in global.document) {
+      // True on the iPhone
       return true;
     }
     try {
@@ -6301,12 +6928,14 @@
     "use strict";
     var that = json;
     var kFormUrlEncodedContentType = "application/x-www-form-urlencoded";
+    // our in-memory credentials
     var cred = {
       token: apiToken,
       secret: apiTokenSecret,
       signingKey: null,
       signingKeyExpiry: null
     };
+    // setup core properties
     Object.defineProperties(that, {
       version: {
         value: "1.4.0"
@@ -6392,9 +7021,23 @@
       cred.secret = undefined;
       return that;
     }
+    /**
+	 * Test if a Digest header should be included in the request, based on the
+	 * request content type.
+	 *
+	 * @param {String} contentType the content type
+	 * @returns {Boolean} <em>true</em> if including the Digest hash is appropriate
+	 */
     function shouldIncludeContentDigest(contentType) {
+      // we don't send Digest for form data, because server treats this as URL parameters
       return contentType && contentType.indexOf(kFormUrlEncodedContentType) < 0;
     }
+    /**
+	 * Test if a Content-Type header value is the form-url-encoded type.
+	 *
+	 * @param {String} contentType the content type
+	 * @returns {Boolean} <em>true</em> if the type is form-url-encoded
+	 */
     function isFormDataContentType(contentType) {
       return contentType && contentType.indexOf(kFormUrlEncodedContentType) == 0;
     }
@@ -6455,6 +7098,7 @@
       var pair;
       var i, len;
       if (search !== undefined && search.length > 0) {
+        // remove any leading ? character
         if (search.match(/^\?/)) {
           search = search.substring(1);
         }
@@ -6494,6 +7138,17 @@
       }
       return result;
     }
+    /**
+	 * Create an object with the canonical header names and their associated values.
+	 *
+	 * @param {Object} uri           a parsed URI object for the request
+	 * @param {String} contentType   the request content type
+	 * @param {Date} date            the request date
+	 * @param {Object} contentSHA256 the CryptoJS digest object of the request body content
+	 * @return {Object} An object with a sorted <code>headerNames</code> property array of strings, and
+	 *                  a <code>headers</code> object of the header name values for keys and
+	 *                  associated header values as values.
+	 */
     function canonicalHeaders(uri, contentType, date, contentSHA256) {
       var result = {
         headerNames: [ "host", "x-sn-date" ],
@@ -6638,6 +7293,9 @@
 	 */
     function json(url, method, data, contentType, callback) {
       var requestUrl = url;
+      // We might be passed to queue, and then our callback will be the last argument (but possibly not #5
+      // if the original call to queue didn't pass all arguments) so we check for that at the start and
+      // adjust what we consider the method, data, and contentType parameter values.
       if (arguments.length > 0) {
         if (arguments.length < 5 && typeof arguments[arguments.length - 1] === "function") {
           callback = arguments[arguments.length - 1];
@@ -6654,6 +7312,7 @@
       }
       method = method === undefined ? "GET" : method.toUpperCase();
       if (method === "POST" || method === "PUT") {
+        // extract any URL request parameters and put into POST body
         if (!data) {
           (function() {
             var queryIndex = url.indexOf("?");
@@ -6673,13 +7332,17 @@
       }
       xhr.on("beforesend", function(request) {
         var authorization = computeAuthorization(url, method, data, contentType, new Date());
+        // set the headers on our request
         request.setRequestHeader("Authorization", authorization.header);
         if (authorization.bodyContentDigest && shouldIncludeContentDigest(contentType)) {
           request.setRequestHeader("Digest", authorization.canonicalHeaders.headers["digest"]);
         }
         request.setRequestHeader("X-SN-Date", authorization.canonicalHeaders.headers["x-sn-date"]);
       });
-      xhr.on("load.internal", function() {});
+      // register a load handler always, just so one is present
+      xhr.on("load.internal", function() {
+        //sn.log('URL {0} response received.', url);
+      });
       if (callback !== undefined) {
         xhr.send(method, data, callback);
       }
@@ -6687,6 +7350,7 @@
     }
     return that;
   };
+  // provide a global singleton helper on sn.net.sec
   sn.net.sec = sn.net.securityHelper();
   /**
  * Set the display units within a d3 selection based on a scale. This method takes a 
@@ -6712,15 +7376,19 @@
   };
   sn.ui.colorDataLegendTable = sn_ui_colorDataLegendTable;
   function sn_ui_colorDataLegendTable(containerSelector, colorData, clickHandler, labelRenderer) {
+    // add labels based on available sources
     var table = d3.select(containerSelector).selectAll("table").data([ 0 ]);
     table.enter().append("table").append("tbody");
     var labelTableRows = table.select("tbody").selectAll("tr").data(colorData);
     var newLabelTableRows = labelTableRows.enter().append("tr");
     labelTableRows.exit().remove();
     if (clickHandler) {
+      // attach the event handler for 'click', and add the 'clickable' class
+      // so can be styled appropriately (e.g. cursor: pointer)
       newLabelTableRows.on("click", clickHandler).classed("clickable", true);
     }
     if (labelRenderer === undefined) {
+      // default way to render labels is just a text node
       labelRenderer = function(s) {
         s.text(Object);
       };
@@ -6766,7 +7434,7 @@
     }
     that.render = render;
     function flipperOffset(d, i) {
-      !d;
+      !d; // work around UglifyJS warning https://github.com/mishoo/UglifyJS2/issues/789
       return config.flipperWidth * (characters.length - 1) - config.flipperWidth * i + "px";
     }
     function update(newValue) {
@@ -6777,6 +7445,7 @@
         for (i = 0, len = str.length; i < len; i++) {
           result.push(str.charAt(i));
         }
+        // we process in reverse, so changed elements are updated in left-to-right order
         return result.reverse();
       }();
       var flippers = root.selectAll("span.flipper").data(characters);
@@ -6793,6 +7462,8 @@
         }
       });
       flippers.enter().append("span").attr("class", "flipper").style("left", flipperOffset).html(function(d) {
+        // older WebKit versions don't seem to support backface-visibility: hidden, so 
+        // completely omit the back face here so CSS styling like shadows don't appear
         return (config.animate ? '<span class="face b"><span class="value">b</span></span>' : "") + '<span class="face a"><span class="value">' + d + "</span></span>";
       });
       flippers.exit().remove();
@@ -6821,6 +7492,9 @@
       }
       return result;
     }();
+    /**
+	 * Cross-browser support for various matrix properties.
+	 */
     this.support = {
       use3d: this.supportDefaults.use3d,
       tProp: this.supportDefaults.tProp,
@@ -6832,6 +7506,7 @@
   sn.ui.Matrix.prototype = {
     constructor: sn.ui.Matrix,
     supportDefaults: function() {
+      // adapted from jquery.transform2d.js
       var divStyle = global && global.document ? global.document.createElement("div").style : undefined;
       var suffix = "Transform";
       var testProperties = [ "Webkit" + suffix, "O" + suffix, "ms" + suffix, "Moz" + suffix ];
@@ -6884,6 +7559,7 @@
 	 * @preserve
 	 */
     setRotation: function(angle) {
+      // TODO this clears any scale, should we care?
       var a = Math.cos(angle);
       var b = Math.sin(angle);
       this.matrix[0] = this.matrix[3] = a;
@@ -6896,6 +7572,7 @@
 	 * @preserve
 	 */
     setScale: function(s) {
+      // TODO this clears any rotation, should we care?
       this.matrix[0] = s;
       this.matrix[3] = s;
     },
